@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+.env
+bin/
+app
+static/css/app.css
+*.test
+*.out
