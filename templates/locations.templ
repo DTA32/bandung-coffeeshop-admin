@@ -1,0 +1,164 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// LocationListPage ports admin.locations.index.tsx (poi / area / district only;
+// cafes live in the cafe console).
+templ LocationListPage(items []models.LocationListItem, typ, ok string) {
+	@Layout("Locations", NavLocations) {
+		@Page(pageCls) {
+			@BackLink("/", "Admin home")
+			<div class="flex items-center justify-between">
+				<h1 class={ h1Cls }>Locations</h1>
+				<a href="/locations/new" class={ btnNewCls }>
+					@Icon("plus", 16)
+					New location
+				</a>
+			</div>
+			@Notice(ok, "")
+			<input
+				class={ searchCls }
+				type="search"
+				placeholder="Search name or id..."
+				aria-label="Search locations"
+				data-list-filter="#location-list"
+			/>
+			<div class="flex flex-col gap-2" id="location-list">
+				<p class="text-sm text-bark" data-list-empty hidden?={ len(items) > 0 }>No locations found.</p>
+				for _, l := range items {
+					<a href={ templ.URL("/locations/" + l.ID) } class={ listRowCls } data-search={ lower(l.Name + " " + l.ID) }>
+						<div class="flex flex-col">
+							<span class="text-sm font-semibold text-forest">{ l.Name }</span>
+							<span class="text-xs text-bark">{ l.ID } · { l.Type }</span>
+						</div>
+						@StatusBadge(l.Status)
+					</a>
+				}
+			</div>
+		}
+	}
+}
+
+// LocationFormPage ports admin.locations.new.tsx / $locationId.tsx +
+// AdminLocationForm.tsx.
+templ LocationFormPage(l *models.Location, isNew bool, errMsg, ok string) {
+	@Layout(locationTitle(l, isNew), NavLocations) {
+		@Page(pageCls) {
+			@BackLink("/locations", "Back to locations")
+			if isNew {
+				<h1 class={ h1Cls }>New location</h1>
+			} else {
+				<div class="flex items-baseline gap-3">
+					<h1 class={ h1Cls }>{ l.Name }</h1>
+					<span class="text-sm text-bark">{ l.ID } · { l.Type }</span>
+				</div>
+			}
+			<form method="post" action={ templ.URL(locationAction(l, isNew)) } class="flex flex-col gap-6">
+				@Notice(ok, errMsg)
+				// Basics
+				<section class={ cardCls }>
+					<h2 class={ sectionTitle }>Basics</h2>
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+						@Field("ID / slug") {
+							if isNew {
+								<input class={ inputCls } name="id" value={ l.ID } placeholder="dago"/>
+							} else {
+								<input class={ inputCls } value={ l.ID } placeholder="dago" disabled/>
+							}
+						}
+						@Field("Type") {
+							<select class={ inputCls } name="type" data-location-type>
+								for _, t := range models.LocationTypes {
+									<option value={ t } selected?={ t == l.Type }>{ t }</option>
+								}
+							</select>
+						}
+						@Field("Status") {
+							<select class={ inputCls } name="status">
+								for _, s := range models.LocationStatuses {
+									<option value={ s } selected?={ s == l.Status }>{ s }</option>
+								}
+							</select>
+						}
+					</div>
+					@Field("Name") {
+						<input class={ inputCls } name="name" value={ l.Name }/>
+					}
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						@Field("Description (EN)") {
+							<textarea class={ inputCls } rows="3" name="description">{ l.Description }</textarea>
+						}
+						@Field("Description (ID)") {
+							<textarea class={ inputCls } rows="3" name="description_indo">{ l.DescriptionIndo }</textarea>
+						}
+					</div>
+					@Field("Google Maps place ID") {
+						<input class={ inputCls } name="gmaps_id" value={ deref(l.GmapsID) }/>
+					}
+				</section>
+				// Coordinates
+				<section class={ cardCls }>
+					<h2 class={ sectionTitle }>Coordinates</h2>
+					<div data-poi-only hidden?={ l.Type != "poi" }>
+						@CoordinatePicker(nil, "#location-geojson")
+					</div>
+					<p class="m-0 text-xs text-bark" data-polygon-only hidden?={ l.Type == "poi" }>
+						Areas and districts are polygons — paste a GeoJSON geometry below.
+					</p>
+					@Field("GeoJSON geometry") {
+						<textarea
+							id="location-geojson"
+							class={ inputCls, "font-mono text-xs" }
+							rows="5"
+							name="geojson"
+							placeholder={ `{"type":"Point","coordinates":[107.61,-6.90]}` }
+						>{ deref(l.Geojson) }</textarea>
+					}
+				</section>
+				@ImagesEditor(l.Images)
+				// Actions
+				<div class="flex items-center justify-between">
+					<div>
+						if !isNew {
+							<button
+								type="submit"
+								formaction={ templ.URL("/locations/" + l.ID + "/delete") }
+								formnovalidate
+								data-confirm={ "Delete location \"" + l.Name + "\"? It will be marked as deleted." }
+								class={ btnDeleteCls }
+							>
+								@Icon("trash-2", 14)
+								Delete location
+							</button>
+						}
+					</div>
+					<div class="flex gap-2">
+						<a href="/locations" class={ btnCancelCls }>Cancel</a>
+						<button type="submit" class={ btnSubmitCls } data-saving-label="Saving...">
+							if isNew {
+								Create location
+							} else {
+								Save
+							}
+						</button>
+					</div>
+				</div>
+			</form>
+		}
+		<script src="/static/vendor/leaflet/leaflet.js" defer></script>
+	}
+}
+
+func locationTitle(l *models.Location, isNew bool) string {
+	if isNew {
+		return "New location"
+	}
+	return l.Name
+}
+
+func locationAction(l *models.Location, isNew bool) string {
+	if isNew {
+		return "/locations/new"
+	}
+	return "/locations/" + l.ID
+}

@@ -1,0 +1,508 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// CafeListPage ports admin.cafes.index.tsx. The search box filters the
+// rendered rows client-side (static/js/forms.js), like the console.
+templ CafeListPage(items []models.CafeListItem, q, ok string) {
+	@Layout("Cafes", NavCafes) {
+		@Page(pageCls) {
+			@BackLink("/", "Admin home")
+			<div class="flex items-center justify-between">
+				<h1 class={ h1Cls }>Cafes</h1>
+				<a href="/cafes/new" class={ btnNewCls }>
+					@Icon("plus", 16)
+					New cafe
+				</a>
+			</div>
+			@Notice(ok, "")
+			<input
+				class={ searchCls }
+				type="search"
+				placeholder="Search cafe name or id..."
+				value={ q }
+				aria-label="Search cafes"
+				data-list-filter="#cafe-list"
+			/>
+			<div class="flex flex-col gap-2" id="cafe-list">
+				<p class="text-sm text-bark" data-list-empty hidden?={ len(items) > 0 }>No cafes found.</p>
+				for _, c := range items {
+					<a href={ templ.URL("/cafes/" + c.ID) } class={ listRowCls } data-search={ lower(c.Name + " " + c.ID) }>
+						<div class="flex flex-col">
+							<span class="text-sm font-semibold text-forest">{ c.Name }</span>
+							<span class="text-xs text-bark">{ c.ID }</span>
+						</div>
+						@StatusBadge(c.Status)
+					</a>
+				}
+			</div>
+		}
+	}
+}
+
+// CafeFormPage ports admin.cafes.new.tsx / admin.cafes.$cafeId.tsx +
+// AdminCafeForm.tsx. isNew selects create mode.
+templ CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, ok string) {
+	@Layout(cafeTitle(c, isNew), NavCafes) {
+		@Page(pageCls) {
+			@BackLink("/cafes", "Back to cafes")
+			if isNew {
+				<h1 class={ h1Cls }>New cafe</h1>
+			} else {
+				<div class="flex flex-wrap items-baseline gap-3">
+					<h1 class={ h1Cls }>{ c.Name }</h1>
+					<span class="text-sm text-bark">{ c.ID }</span>
+				</div>
+				<div class="-mt-3 flex flex-wrap gap-4 text-sm">
+					<a class={ inlineLinkCls } href={ templ.URL("/cafes/" + c.ID + "/feed") }>Feed</a>
+					<a class={ inlineLinkCls } href={ templ.URL("/changes?cafe=" + itoa(c.CafeID)) }>Pending changes</a>
+					<a class={ inlineLinkCls } href={ templ.URL("/posts?cafe=" + itoa(c.CafeID)) }>Instagram posts</a>
+					<a class={ inlineLinkCls } href={ templ.URL("/sources?cafe=" + itoa(c.CafeID)) }>Sources</a>
+					<a class={ "flex items-center gap-1", inlineLinkCls } href={ templ.URL("https://bdgcafe.com/cafe/" + c.ID) } target="_blank" rel="noopener noreferrer">
+						View on site
+						@Icon("external-link", 14)
+					</a>
+				</div>
+			}
+			@cafeForm(c, opts, isNew, errMsg, ok)
+		}
+		<script src="/static/vendor/leaflet/leaflet.js" defer></script>
+	}
+}
+
+templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, ok string) {
+	<form method="post" action={ templ.URL(cafeAction(c, isNew)) } class="flex flex-col gap-6">
+		@Notice(ok, errMsg)
+		// Basics
+		<section class={ cardCls }>
+			<h2 class={ sectionTitle }>Basics</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				@Field("ID / slug") {
+					if isNew {
+						<input class={ inputCls } name="id" value={ c.ID } placeholder="accio-coffee"/>
+					} else {
+						<input class={ inputCls } value={ c.ID } placeholder="accio-coffee" disabled/>
+					}
+				}
+				@Field("Name") {
+					<input class={ inputCls } name="name" value={ c.Name }/>
+				}
+			</div>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				@Field("Description / address (EN)") {
+					<textarea class={ inputCls } name="description" rows="2">{ c.Description }</textarea>
+				}
+				@Field("Description / address (ID)") {
+					<textarea class={ inputCls } name="description_indo" rows="2">{ c.DescriptionIndo }</textarea>
+				}
+			</div>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				@Field("Google Maps place ID") {
+					<input class={ inputCls } name="gmaps_id" value={ deref(c.GmapsID) }/>
+				}
+				@Field("Status") {
+					<select class={ inputCls } name="status">
+						for _, s := range models.LocationStatuses {
+							<option value={ s } selected?={ s == c.Status }>{ s }</option>
+						}
+					</select>
+				}
+			</div>
+		</section>
+		// Details
+		<section class={ cardCls }>
+			<h2 class={ sectionTitle }>Details</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				@Field("Instagram handle") {
+					<input class={ inputCls } name="instagram" value={ deref(c.Instagram) } placeholder="without @"/>
+				}
+				@Field("Open hour (HH:MM)") {
+					<input class={ inputCls } name="open_hour" value={ deref(c.OpenHour) } placeholder="10:00"/>
+				}
+				@Field("Close hour (HH:MM)") {
+					<input class={ inputCls } name="close_hour" value={ deref(c.CloseHour) } placeholder="22:00"/>
+				}
+			</div>
+			<p class="m-0 text-xs text-bark">Open 24 hours = 00:00 – 23:59. A close hour earlier than the open hour means it closes after midnight.</p>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				@Field("Phone") {
+					<input class={ inputCls } name="phone" value={ deref(c.Phone) } placeholder="+6281234567890"/>
+				}
+				@Field("Menu URL") {
+					<input class={ inputCls } type="url" name="menu" value={ deref(c.Menu) } placeholder="https://..."/>
+				}
+			</div>
+			<label class={ checkRowCls }>
+				<input type="checkbox" name="is_featured" value="1" checked?={ c.IsFeatured }/>
+				<span class={ checkTextCls }>Featured on homepage</span>
+			</label>
+			<div class="flex flex-col gap-1">
+				<span class={ labelCls }>Matches the weather</span>
+				<div class="flex flex-wrap gap-4">
+					for _, w := range models.Weathers {
+						<label class={ checkRowCls }>
+							<input type="checkbox" name="weather" value={ w } checked?={ contains(c.Weather, w) }/>
+							<span class={ checkTextCls }>{ w }</span>
+						</label>
+					}
+				</div>
+			</div>
+		</section>
+		// Location
+		<section class={ cardCls }>
+			<h2 class={ sectionTitle }>Location</h2>
+			@CoordinatePicker(c.Coordinates, "")
+		</section>
+		@cafePriceSection(c.Price)
+		@cafeReviewSection(c.Review)
+		@cafeRatingsSection(c.Ratings, opts)
+		@cafeTagsSection(c.Tags, opts.Tags)
+		@ImagesEditor(c.Images)
+		// Actions
+		<div class="flex items-center justify-between">
+			<div>
+				if !isNew {
+					<button
+						type="submit"
+						formaction={ templ.URL("/cafes/" + c.ID + "/delete") }
+						formnovalidate
+						data-confirm={ "Delete cafe \"" + c.Name + "\"? It will be marked as deleted." }
+						class={ btnDeleteCls }
+					>
+						@Icon("trash-2", 14)
+						Delete cafe
+					</button>
+				}
+			</div>
+			<div class="flex gap-2">
+				<a href="/cafes" class={ btnCancelCls }>Cancel</a>
+				<button type="submit" class={ btnSubmitCls } data-saving-label="Saving...">{ cafeSubmit(isNew) }</button>
+			</div>
+		</div>
+	</form>
+}
+
+func cafeTitle(c *models.Cafe, isNew bool) string {
+	if isNew {
+		return "New cafe"
+	}
+	return c.Name
+}
+
+func cafeAction(c *models.Cafe, isNew bool) string {
+	if isNew {
+		return "/cafes/new"
+	}
+	return "/cafes/" + c.ID
+}
+
+func cafeSubmit(isNew bool) string {
+	if isNew {
+		return "Create cafe"
+	}
+	return "Save"
+}
+
+type priceGroup struct {
+	group    string
+	min, max string
+}
+
+var priceGroups = []priceGroup{
+	{"Price range", "price_range_min", "price_range_max"},
+	{"Coffee", "coffee_price_min", "coffee_price_max"},
+	{"Snack", "snack_price_min", "snack_price_max"},
+	{"Food", "food_price_min", "food_price_max"},
+}
+
+func priceValue(p models.CafePrice, key string) string {
+	switch key {
+	case "price_range_min":
+		return intStr(p.PriceRangeMin)
+	case "price_range_max":
+		return intStr(p.PriceRangeMax)
+	case "coffee_price_min":
+		return intStr(p.CoffeePriceMin)
+	case "coffee_price_max":
+		return intStr(p.CoffeePriceMax)
+	case "snack_price_min":
+		return intStr(p.SnackPriceMin)
+	case "snack_price_max":
+		return intStr(p.SnackPriceMax)
+	case "food_price_min":
+		return intStr(p.FoodPriceMin)
+	default:
+		return intStr(p.FoodPriceMax)
+	}
+}
+
+templ cafePriceSection(p models.CafePrice) {
+	<section class={ cardCls }>
+		<h2 class={ sectionTitle }>Pricing (IDR)</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			for _, row := range priceGroups {
+				<div class="flex flex-col gap-1">
+					<span class={ labelCls }>{ row.group }</span>
+					<div class="flex gap-2">
+						<input type="number" class={ inputCls, "w-full" } name={ row.min } placeholder="Min" value={ priceValue(p, row.min) } aria-label={ row.group + " min" }/>
+						<input type="number" class={ inputCls, "w-full" } name={ row.max } placeholder="Max" value={ priceValue(p, row.max) } aria-label={ row.group + " max" }/>
+					</div>
+				</div>
+			}
+		</div>
+	</section>
+}
+
+templ cafeReviewSection(rv *models.Review) {
+	<section class={ cardCls }>
+		<h2 class={ sectionTitle }>Review</h2>
+		if rv != nil && rv.ID != nil {
+			<input type="hidden" name="review_id" value={ itoa(*rv.ID) }/>
+		}
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+			@Field("Overall score (0–5)") {
+				<input type="number" step="0.01" min="0" max="5" class={ inputCls } name="overall_score" value={ reviewFloat(rv, "overall") }/>
+			}
+			@Field("WFC score (0–5)") {
+				<input type="number" step="0.01" min="0" max="5" class={ inputCls } name="wfc_score" value={ reviewFloat(rv, "wfc") }/>
+			}
+			@Field("Personal score (0–5)") {
+				<input type="number" step="0.01" min="0" max="5" class={ inputCls } name="personal_score" value={ reviewFloat(rv, "personal") }/>
+			}
+			@Field("Visited at") {
+				<input type="date" class={ inputCls } name="visited_at" value={ reviewVisited(rv) }/>
+			}
+		</div>
+		<label class={ checkRowCls }>
+			<input type="checkbox" name="is_subjective" value="1" checked?={ rv != nil && rv.IsSubjective }/>
+			<span class={ checkTextCls }>Subjective (biased / regular visitor)</span>
+		</label>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			@Field("Content (EN)") {
+				<textarea class={ inputCls } rows="6" name="review_content">{ reviewText(rv, false) }</textarea>
+			}
+			@Field("Content (ID)") {
+				<textarea class={ inputCls } rows="6" name="review_content_indo">{ reviewText(rv, true) }</textarea>
+			}
+		</div>
+	</section>
+}
+
+func reviewFloat(rv *models.Review, which string) string {
+	if rv == nil {
+		return ""
+	}
+	switch which {
+	case "overall":
+		return floatStr(rv.OverallScore)
+	case "wfc":
+		return floatStr(rv.WFCScore)
+	default:
+		return floatStr(rv.PersonalScore)
+	}
+}
+
+func reviewVisited(rv *models.Review) string {
+	if rv == nil {
+		return ""
+	}
+	return deref(rv.VisitedAt)
+}
+
+func reviewText(rv *models.Review, indo bool) string {
+	if rv == nil {
+		return ""
+	}
+	if indo {
+		return deref(rv.ContentIndo)
+	}
+	return deref(rv.Content)
+}
+
+templ cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) {
+	<section class={ cardCls }>
+		<h2 class={ sectionTitle }>Ratings</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			for _, rt := range opts.RatingTypes {
+				<div class="flex flex-col gap-2 rounded-xl border border-grove-light p-3" data-rating>
+					<label class="flex items-center gap-2">
+						<input type="checkbox" name={ "rating_enabled_" + rt.Type } value="1" checked?={ findRating(ratings, rt.Type) != nil } data-rating-toggle/>
+						<span class="text-sm font-semibold text-forest">{ rt.Label }</span>
+					</label>
+					if b := ratingBuckets(opts.RatingCategories, rt.Type); b != "" {
+						<span class="text-[11px] text-bark">{ b }</span>
+					}
+					<div class="flex gap-2">
+						<input
+							type="number"
+							step="any"
+							min={ fmtFloat(bucketMin(opts.RatingCategories, rt.Type)) }
+							max={ fmtFloat(bucketMax(opts.RatingCategories, rt.Type)) }
+							disabled?={ findRating(ratings, rt.Type) == nil }
+							placeholder={ "score " + fmtFloat(bucketMin(opts.RatingCategories, rt.Type)) + "–" + fmtFloat(bucketMax(opts.RatingCategories, rt.Type)) }
+							class={ inputCls, "w-32 min-w-0 disabled:opacity-40" }
+							name={ "rating_score_" + rt.Type }
+							value={ ratingScore(ratings, rt.Type) }
+							aria-label={ rt.Label + " score" }
+						/>
+						<input
+							type="text"
+							disabled?={ findRating(ratings, rt.Type) == nil }
+							placeholder="override EN (optional)"
+							class={ inputCls, "min-w-0 flex-1 disabled:opacity-40" }
+							name={ "rating_override_" + rt.Type }
+							value={ ratingOverride(ratings, rt.Type, false) }
+							aria-label={ rt.Label + " override EN" }
+						/>
+						<input
+							type="text"
+							disabled?={ findRating(ratings, rt.Type) == nil }
+							placeholder="override ID (optional)"
+							class={ inputCls, "min-w-0 flex-1 disabled:opacity-40" }
+							name={ "rating_override_indo_" + rt.Type }
+							value={ ratingOverride(ratings, rt.Type, true) }
+							aria-label={ rt.Label + " override ID" }
+						/>
+					</div>
+				</div>
+			}
+		</div>
+	</section>
+}
+
+func findRating(ratings []models.Rating, t string) *models.Rating {
+	for i := range ratings {
+		if ratings[i].CategoryType == t {
+			return &ratings[i]
+		}
+	}
+	return nil
+}
+
+func ratingScore(ratings []models.Rating, t string) string {
+	if r := findRating(ratings, t); r != nil {
+		return fmtFloat(r.Score)
+	}
+	return ""
+}
+
+func ratingOverride(ratings []models.Rating, t string, indo bool) string {
+	r := findRating(ratings, t)
+	if r == nil {
+		return ""
+	}
+	if indo {
+		return deref(r.ShortDescriptionOverrideIndo)
+	}
+	return deref(r.ShortDescriptionOverride)
+}
+
+func ratingBuckets(cats []models.RatingCategory, t string) string {
+	out := ""
+	for _, c := range cats {
+		if c.Type != t {
+			continue
+		}
+		if out != "" {
+			out += ", "
+		}
+		out += c.Name + " (" + fmtFloat(c.LowerBound) + "–" + fmtFloat(c.UpperBound) + ")"
+	}
+	return out
+}
+
+// bucketMin / bucketMax: the score range follows the dimension's own bounds
+// (e.g. price-rank spans 0..100000), not a fixed 0–5.
+func bucketMin(cats []models.RatingCategory, t string) float64 {
+	found, out := false, 0.0
+	for _, c := range cats {
+		if c.Type == t && (!found || c.LowerBound < out) {
+			found, out = true, c.LowerBound
+		}
+	}
+	return out
+}
+
+func bucketMax(cats []models.RatingCategory, t string) float64 {
+	found, out := false, 5.0
+	for _, c := range cats {
+		if c.Type == t && (!found || c.UpperBound > out) {
+			found, out = true, c.UpperBound
+		}
+	}
+	return out
+}
+
+templ cafeTagsSection(assigned []models.CafeTag, tags []models.Tag) {
+	<section class={ cardCls }>
+		<h2 class={ sectionTitle }>Tags</h2>
+		<div class="flex flex-col gap-2" id="cafe-tag-list">
+			for _, t := range tags {
+				@CafeTagRow(t, tagAssigned(assigned, t.ID), tagVisible(assigned, t.ID))
+			}
+		</div>
+		<div class="flex flex-wrap items-end gap-2 border-t border-grove-light pt-3" data-new-tag>
+			@Field("New tag name") {
+				<input class={ inputCls } name="new_tag_name"/>
+			}
+			@Field("Slug (optional)") {
+				<input class={ inputCls } name="new_tag_slug"/>
+			}
+			<button
+				type="button"
+				class="flex items-center gap-1 rounded-lg bg-forest px-3 py-2 text-sm font-semibold text-cream disabled:opacity-40"
+				hx-post="/cafes/tags"
+				hx-include="[name='new_tag_name'],[name='new_tag_slug']"
+				hx-target="#cafe-tag-list"
+				hx-swap="beforeend"
+				hx-disabled-elt="this"
+			>
+				@Icon("plus", 14)
+				Add tag
+			</button>
+		</div>
+		<p id="new-tag-error" class={ rowErrorCls } role="alert"></p>
+	</section>
+}
+
+// CafeTagRow is one tag checkbox in the cafe form; the "visible" toggle only
+// shows while the tag is assigned. Also returned by POST /cafes/tags.
+templ CafeTagRow(t models.Tag, isAssigned, visible bool) {
+	<div class="flex items-center gap-3" data-tag-row>
+		<label class="flex flex-1 items-center gap-2">
+			<input type="checkbox" name="tag" value={ itoa(t.ID) } checked?={ isAssigned } data-tag-assign/>
+			<span class="text-sm text-forest">{ t.Name }</span>
+			if t.Slug != nil {
+				<span class="text-xs text-bark">({ *t.Slug })</span>
+			}
+		</label>
+		<label class="flex items-center gap-1.5 text-xs text-bark" data-tag-visible hidden?={ !isAssigned }>
+			<input type="checkbox" name={ "tag_visible_" + itoa(t.ID) } value="1" checked?={ visible }/>
+			visible
+		</label>
+	</div>
+}
+
+// NewTagError replaces #new-tag-error after a failed inline create.
+templ NewTagError(msg string) {
+	{ msg }
+}
+
+func tagAssigned(assigned []models.CafeTag, id int) bool {
+	for _, a := range assigned {
+		if a.TagID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// tagVisible defaults to visible for unassigned tags so ticking one is enough.
+func tagVisible(assigned []models.CafeTag, id int) bool {
+	for _, a := range assigned {
+		if a.TagID == id {
+			return a.Visible
+		}
+	}
+	return true
+}

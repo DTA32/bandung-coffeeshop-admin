@@ -1,0 +1,75 @@
+@import 'tailwindcss';
+
+/* Scan templ sources (and helpers) for class names. */
+@source '../../templates';
+@source '../js';
+
+/* Plus Jakarta Sans Variable (OFL, vendor/fonts/LICENSE-plus-jakarta-sans.txt),
+   the same files @fontsource-variable/plus-jakarta-sans ships to the public FE. */
+@font-face {
+  font-family: 'Plus Jakarta Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(../vendor/fonts/plus-jakarta-sans-latin-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(../vendor/fonts/plus-jakarta-sans-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Design tokens copied verbatim from bandung-coffeeshop-fe/src/styles.css @theme
+   (bark is the post-a11y-audit #5f6e57; the console branch predates it). */
+@theme {
+  --color-forest: #2a3d22;
+  --color-moss-dark: #4a5a38;
+  --color-moss: #4a7038;
+  --color-grove: #6a9e52;
+  --color-grove-light: #d4e3c5;
+  --color-bark: #5f6e57;
+  --color-cream: #f7f5ee;
+  --color-surface: #ffffff;
+  --color-forest-light: #a0b090;
+  --color-forest-lighter: #eaf3de;
+
+  /* Utility colors */
+  --color-warning: var(--color-amber-700);
+  --color-warning-bg: var(--color-amber-50);
+  --color-error: var(--color-red-800);
+  --color-error-bg: var(--color-red-50);
+  --color-error-accent: var(--color-red-400);
+  --color-price-mid: var(--color-orange-400);
+  --color-price-mid-bg: var(--color-orange-100);
+  --color-price-high: var(--color-red-400);
+  --color-price-high-bg: var(--color-red-100);
+  --color-muted: var(--color-gray-600);
+  --color-muted-bg: var(--color-gray-100);
+
+  --font-sans: 'Plus Jakarta Sans Variable', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans Variable', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.htmx-request.htmx-indicator,
+.htmx-request .htmx-indicator {
+  opacity: 1;
+}
+.htmx-indicator {
+  opacity: 0;
+  transition: opacity 150ms;
+}

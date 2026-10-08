@@ -1,0 +1,121 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// CoordinatePicker ports the console's CoordinatePicker.tsx: a Leaflet map with
+// a draggable pin plus latitude/longitude inputs (static/js/forms.js).
+// With geojsonTarget set (location form) the inputs are unnamed and the pin
+// writes a GeoJSON Point into that textarea instead of posting lat/lng.
+templ CoordinatePicker(c *models.Coordinates, geojsonTarget string) {
+	<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
+	<div class="flex flex-col gap-3">
+		<div
+			class="h-64 w-full overflow-hidden rounded-xl border border-grove-light"
+			data-coordinate-picker
+			if geojsonTarget != "" {
+				data-geojson-target={ geojsonTarget }
+			}
+		></div>
+		<p class="m-0 text-xs text-bark">
+			Click the map or drag the marker to set the location. You can also paste
+			coordinates below.
+		</p>
+		<div class="flex gap-3">
+			<label class="flex flex-1 flex-col gap-1">
+				<span class="text-xs font-semibold text-bark">Latitude</span>
+				<input
+					type="number"
+					step="any"
+					min="-90"
+					max="90"
+					id="coord-lat"
+					if geojsonTarget == "" {
+						name="lat"
+					}
+					value={ coordLat(c) }
+					class="rounded-lg border border-grove-light p-2 text-sm text-forest focus:border-grove focus:outline-none"
+				/>
+			</label>
+			<label class="flex flex-1 flex-col gap-1">
+				<span class="text-xs font-semibold text-bark">Longitude</span>
+				<input
+					type="number"
+					step="any"
+					min="-180"
+					max="180"
+					id="coord-lng"
+					if geojsonTarget == "" {
+						name="lng"
+					}
+					value={ coordLng(c) }
+					class="rounded-lg border border-grove-light p-2 text-sm text-forest focus:border-grove focus:outline-none"
+				/>
+			</label>
+		</div>
+	</div>
+}
+
+func coordLat(c *models.Coordinates) string {
+	if c == nil {
+		return ""
+	}
+	return fmtFloat(c.Lat)
+}
+
+func coordLng(c *models.Coordinates) string {
+	if c == nil {
+		return ""
+	}
+	return fmtFloat(c.Lng)
+}
+
+// ImagesEditor is the console's image list: URL + EN/ID alt text per row,
+// reorder and remove buttons; row order = display_order.
+templ ImagesEditor(images []models.Image) {
+	<section class={ cardCls } data-images-editor>
+		<h2 class={ sectionTitle }>Images</h2>
+		<div class="flex flex-col gap-3">
+			<div class="flex flex-col gap-3 empty:hidden" data-image-list>
+				for _, im := range images {
+					@imageRow(im)
+				}
+			</div>
+			<button type="button" class={ btnOutlineCls } data-image-add>
+				@Icon("plus", 14)
+				Add image
+			</button>
+		</div>
+		<template data-image-template>
+			@imageRow(models.Image{})
+		</template>
+	</section>
+}
+
+templ imageRow(im models.Image) {
+	<div class="flex items-start gap-2" data-image-row>
+		<div class="flex flex-1 flex-col gap-2">
+			<input class={ inputCls } name="image_url" placeholder="Image URL" value={ im.URL } aria-label="Image URL"/>
+			<div class="flex gap-2">
+				<input class={ inputCls, "min-w-0 flex-1" } name="image_desc" placeholder="Alt text (EN)" value={ im.Description } aria-label="Alt text (EN)"/>
+				<input class={ inputCls, "min-w-0 flex-1" } name="image_desc_indo" placeholder="Alt text (ID)" value={ im.DescriptionIndo } aria-label="Alt text (ID)"/>
+			</div>
+		</div>
+		<div class="flex flex-col gap-1">
+			<button type="button" class={ btnIconCls } data-image-up aria-label="Move up">
+				@Icon("arrow-up", 14)
+			</button>
+			<button type="button" class={ btnIconCls } data-image-down aria-label="Move down">
+				@Icon("arrow-down", 14)
+			</button>
+			<button type="button" class={ btnIconDeleteCls } data-image-remove aria-label="Remove">
+				@Icon("trash-2", 14)
+			</button>
+		</div>
+	</div>
+}
+
+// Deleted replaces a row after a successful HTMX delete: an empty outerHTML
+// swap removes the card, like the console dropping it from state.
+templ Deleted(what string) {
+	@templ.Raw("")
+}

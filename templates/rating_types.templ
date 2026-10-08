@@ -1,0 +1,77 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// RatingTypesPage ports admin.rating-types.tsx.
+templ RatingTypesPage(types []models.RatingType, errMsg string) {
+	@Layout("Rating types", NavRatings) {
+		@Page(pageNarrowCls) {
+			@BackLink("/", "Admin home")
+			<h1 class={ h1Cls }>Rating types</h1>
+			<p class={ introCls }>
+				The rating dimensions (e.g. Vibe, Price). Each has score buckets
+				managed under <a class={ inlineLinkCls } href="/rating-categories">Rating categories</a>. A type can only be deleted when no
+				category or cafe rating uses it.
+			</p>
+			<form method="post" action="/rating-types" class={ cardTightCls }>
+				<h2 class="m-0 text-base font-bold text-forest">New rating type</h2>
+				if errMsg != "" {
+					<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+				}
+				<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+					@Field("Type key (slug)") {
+						<input class={ inputCls } name="type" placeholder="e.g. cleanliness"/>
+					}
+					@Field("Label (EN)") {
+						<input class={ inputCls } name="label"/>
+					}
+					@Field("Label (ID)") {
+						<input class={ inputCls } name="label_indo"/>
+					}
+				</div>
+				<button type="submit" class={ btnAddCls }>
+					@Icon("plus", 14)
+					Add type
+				</button>
+			</form>
+			<div class="flex flex-col gap-3">
+				for _, rt := range types {
+					@RatingTypeRow(rt, "")
+				}
+			</div>
+		}
+	}
+}
+
+templ RatingTypeRow(rt models.RatingType, errMsg string) {
+	<form class={ cardTightCls } hx-post={ "/rating-types/" + rt.Type } hx-swap="outerHTML" hx-disabled-elt="find button">
+		if errMsg != "" {
+			<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+		}
+		<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+			@Field("Type key") {
+				<input class={ inputCls, "opacity-60" } value={ rt.Type } disabled/>
+			}
+			@Field("Label (EN)") {
+				<input class={ inputCls } name="label" value={ rt.Label }/>
+			}
+			@Field("Label (ID)") {
+				<input class={ inputCls } name="label_indo" value={ rt.LabelIndo }/>
+			}
+		</div>
+		<div class="flex items-center justify-between">
+			<button
+				type="button"
+				class={ btnDeleteSmCls }
+				hx-post={ "/rating-types/" + rt.Type + "/delete" }
+				hx-target="closest form"
+				hx-swap="outerHTML"
+				hx-confirm={ "Delete rating type \"" + rt.Type + "\"?" }
+			>
+				@Icon("trash-2", 14)
+				Delete
+			</button>
+			<button type="submit" class="rounded-lg bg-forest px-5 py-1.5 text-sm font-semibold text-cream disabled:opacity-40">Save</button>
+		</div>
+	</form>
+}

@@ -1,0 +1,81 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// TagsPage ports admin.tags.tsx.
+templ TagsPage(tags []models.Tag, errMsg string) {
+	@Layout("Tags", NavTags) {
+		@Page(pageNarrowCls) {
+			@BackLink("/", "Admin home")
+			<h1 class={ h1Cls }>Tags</h1>
+			<form method="post" action="/tags" class={ cardTightCls }>
+				<h2 class="m-0 text-base font-bold text-forest">New tag</h2>
+				if errMsg != "" {
+					<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+				}
+				<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+					@Field("Name (EN)") {
+						<input class={ inputCls } name="name"/>
+					}
+					@Field("Name (ID)") {
+						<input class={ inputCls } name="name_indo"/>
+					}
+					@Field("Slug") {
+						<input class={ inputCls } name="slug"/>
+					}
+				</div>
+				<button type="submit" class={ btnAddCls }>
+					@Icon("plus", 14)
+					Add tag
+				</button>
+			</form>
+			<div class="flex flex-col gap-3">
+				for _, t := range tags {
+					@TagRow(t, "")
+				}
+			</div>
+		}
+	}
+}
+
+// TagRow is an inline-editable card, swapped in place by HTMX.
+templ TagRow(t models.Tag, errMsg string) {
+	<form class={ cardTightCls } hx-post={ "/tags/" + itoa(t.ID) } hx-swap="outerHTML" hx-disabled-elt="find button">
+		if errMsg != "" {
+			<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+		}
+		<div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+			@Field("Name (EN)") {
+				<input class={ inputCls } name="name" value={ t.Name }/>
+			}
+			@Field("Name (ID)") {
+				<input class={ inputCls } name="name_indo" value={ t.NameIndo }/>
+			}
+			@Field("Slug") {
+				<input class={ inputCls } name="slug" value={ deref(t.Slug) }/>
+			}
+		</div>
+		<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+			@Field("Description (EN)") {
+				<textarea class={ inputCls } rows="2" name="description">{ t.Description }</textarea>
+			}
+			@Field("Description (ID)") {
+				<textarea class={ inputCls } rows="2" name="description_indo">{ t.DescriptionIndo }</textarea>
+			}
+		</div>
+		<div class="flex items-center justify-between">
+			<button
+				type="button"
+				class={ btnDeleteSmCls }
+				hx-post={ "/tags/" + itoa(t.ID) + "/delete" }
+				hx-target="closest form"
+				hx-swap="outerHTML"
+				hx-confirm={ "Delete tag \"" + t.Name + "\"? It will be unassigned from all cafes." }
+			>
+				@Icon("trash-2", 14)
+				Delete
+			</button>
+			<button type="submit" class="rounded-lg bg-forest px-5 py-1.5 text-sm font-semibold text-cream disabled:opacity-40">Save</button>
+		</div>
+	</form>
+}

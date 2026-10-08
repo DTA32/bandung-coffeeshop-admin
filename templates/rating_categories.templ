@@ -1,0 +1,111 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// RatingCategoriesPage ports admin.rating-categories.tsx.
+templ RatingCategoriesPage(types []models.RatingType, cats []models.RatingCategory, errMsg string) {
+	@Layout("Rating categories", NavRatings) {
+		@Page(pageNarrowCls) {
+			@BackLink("/", "Admin home")
+			<h1 class={ h1Cls }>Rating categories</h1>
+			<p class={ introCls }>
+				Each rating dimension has score buckets (lower/upper bound). A cafe's
+				score falls into the matching bucket. Dimensions are managed under
+				<a class={ inlineLinkCls } href="/rating-types">Rating types</a>.
+			</p>
+			<form method="post" action="/rating-categories" class={ cardTightCls }>
+				<h2 class="m-0 text-base font-bold text-forest">New bucket</h2>
+				if errMsg != "" {
+					<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+				}
+				@ratingCategoryFields(blankCategory(types), types)
+				<div class="flex items-center justify-between">
+					<div></div>
+					<button type="submit" class={ btnSaveSmCls }>
+						@Icon("plus", 14)
+						Add bucket
+					</button>
+				</div>
+			</form>
+			<div class="flex flex-col gap-3">
+				for _, c := range cats {
+					@RatingCategoryRow(c, types, "")
+				}
+			</div>
+		}
+	}
+}
+
+func blankCategory(types []models.RatingType) models.RatingCategory {
+	c := models.RatingCategory{}
+	if len(types) > 0 {
+		c.Type = types[0].Type
+	}
+	return c
+}
+
+templ RatingCategoryRow(c models.RatingCategory, types []models.RatingType, errMsg string) {
+	<form class={ cardTightCls } hx-post={ "/rating-categories/" + itoa(c.ID) } hx-swap="outerHTML" hx-disabled-elt="find button">
+		if errMsg != "" {
+			<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+		}
+		@ratingCategoryFields(c, types)
+		<div class="flex items-center justify-between">
+			<div>
+				<button
+					type="button"
+					class={ btnDeleteSmCls }
+					hx-post={ "/rating-categories/" + itoa(c.ID) + "/delete" }
+					hx-target="closest form"
+					hx-swap="outerHTML"
+					hx-confirm={ "Delete bucket \"" + c.Name + "\"?" }
+				>
+					@Icon("trash-2", 14)
+					Delete
+				</button>
+			</div>
+			<button type="submit" class={ btnSaveSmCls }>Save</button>
+		</div>
+	</form>
+}
+
+templ ratingCategoryFields(c models.RatingCategory, types []models.RatingType) {
+	<div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+		@Field("Type") {
+			<select class={ inputCls } name="type">
+				for _, t := range types {
+					<option value={ t.Type } selected?={ t.Type == c.Type }>{ t.Label } ({ t.Type })</option>
+				}
+			</select>
+		}
+		@Field("Slug") {
+			<input class={ inputCls } name="slug" value={ deref(c.Slug) }/>
+		}
+		@Field("Lower bound") {
+			<input type="number" step="0.01" class={ inputCls } name="lower_bound" value={ fmtFloat(c.LowerBound) }/>
+		}
+		@Field("Upper bound") {
+			<input type="number" step="0.01" class={ inputCls } name="upper_bound" value={ fmtFloat(c.UpperBound) }/>
+		}
+	</div>
+	<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+		@Field("Name (EN)") {
+			<input class={ inputCls } name="name" value={ c.Name }/>
+		}
+		@Field("Name (ID)") {
+			<input class={ inputCls } name="name_indo" value={ c.NameIndo }/>
+		}
+		@Field("Short description (EN)") {
+			<input class={ inputCls } name="short_description" value={ c.ShortDescription }/>
+		}
+		@Field("Short description (ID)") {
+			<input class={ inputCls } name="short_description_indo" value={ c.ShortDescriptionIndo }/>
+		}
+		@Field("Long description (EN)") {
+			<textarea class={ inputCls } rows="2" name="long_description">{ c.LongDescription }</textarea>
+		}
+		@Field("Long description (ID)") {
+			<textarea class={ inputCls } rows="2" name="long_description_indo">{ c.LongDescriptionIndo }</textarea>
+		}
+	</div>
+}

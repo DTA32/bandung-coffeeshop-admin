@@ -1,0 +1,85 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+templ PostsPage(posts []models.Post, cafeFilter int, ok string) {
+	@Layout("Instagram posts", NavPosts) {
+		@Page(pageWideCls) {
+			@BackLink("/", "Admin home")
+			<div class="flex items-center justify-between">
+				<h1 class={ h1Cls }>Instagram posts</h1>
+				if cafeFilter != 0 {
+					<a href="/posts" class={ btnCancelCls }>Show all cafes</a>
+				}
+			</div>
+			<p class={ introCls }>New posts from cafe accounts (including collabs). Turn one into a feed entry, or ignore it — ignored posts never come back.</p>
+			@Notice(ok, "")
+			if len(posts) == 0 {
+				<p class="m-0 text-sm text-bark">No new posts.</p>
+			}
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+				for _, p := range posts {
+					@PostCard(p)
+				}
+			</div>
+		}
+	}
+}
+
+templ PostCard(p models.Post) {
+	<article id={ "post-" + i64(p.ID) } class={ cardTightCls }>
+		<header class="flex items-start justify-between gap-2">
+			<div class="flex flex-col">
+				<a class="text-sm font-semibold text-forest hover:underline" href={ templ.URL("/posts?cafe=" + itoa(p.CafeID)) }>{ p.CafeName }</a>
+				<span class="text-xs text-bark">
+					{ fmtTime(p.Value.TakenAt) }
+					if p.Value.IsCollab {
+						· collab by { "@" + p.Value.Owner }
+					}
+				</span>
+			</div>
+			if p.Value.Permalink != "" {
+				<a class={ "flex items-center gap-1 text-xs", inlineLinkCls } href={ templ.URL(p.Value.Permalink) } target="_blank" rel="noopener noreferrer">
+					Instagram
+					@Icon("external-link", 12)
+				</a>
+			}
+		</header>
+		@postMedia(p.Value.Media)
+		<p class="m-0 whitespace-pre-wrap break-words text-sm text-forest">{ truncate(p.Value.Caption, 400) }</p>
+		<div class="mt-auto flex gap-2">
+			<a class={ "flex-1", btnPrimarySmCls } href={ templ.URL("/posts/" + i64(p.ID) + "/feed") }>
+				@Icon("plus", 14)
+				Create feed for this cafe
+			</a>
+			<button
+				class={ btnOutlineSmCls }
+				hx-post={ "/posts/" + i64(p.ID) + "/ignore" }
+				hx-target={ "#post-" + i64(p.ID) }
+				hx-swap="outerHTML"
+				hx-disabled-elt="this"
+			>Ignore</button>
+		</div>
+	</article>
+}
+
+templ postMedia(media []models.PostMedia) {
+	if len(media) > 0 {
+		<div class="flex gap-2 overflow-x-auto">
+			for _, m := range media {
+				<div class="relative h-40 w-32 shrink-0 overflow-hidden rounded-xl bg-forest-lighter">
+					<img src={ thumb(imageURL(m.R2Key), 320) } alt="" class="h-full w-full object-cover" loading="lazy"/>
+					if m.Type == "video" {
+						<span class="absolute left-1 top-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold text-white">video</span>
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+templ PostIgnored(p models.Post) {
+	<article id={ "post-" + i64(p.ID) } class={ cardTightCls, "text-sm text-bark" }>
+		Ignored post from { p.CafeName } ({ fmtTime(p.Value.TakenAt) }).
+	</article>
+}

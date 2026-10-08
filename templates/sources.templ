@@ -1,0 +1,222 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+type SourcesFilter struct {
+	Source  string
+	Failing bool
+	CafeID  int
+}
+
+templ SourcesPage(targets []models.SourceTarget, runs []models.ScrapeRun, cafes []models.CafeListItem, f SourcesFilter, ok, errMsg string) {
+	@Layout("Sources", NavSources) {
+		@Page(pageWideCls) {
+			@BackLink("/", "Admin home")
+			<h1 class={ h1Cls }>Sources</h1>
+			<p class={ introCls }>
+				What the scraper fetches per cafe. Google Maps and Instagram targets are created
+				automatically from the cafe's Google Maps ID and Instagram handle; Linktree targets are
+				discovered from Instagram bio links. Clear an external ID to make the scraper resolve it again.
+			</p>
+			@Notice(ok, errMsg)
+			<section class={ cardCls }>
+				<h2 class={ sectionTitle }>Recent runs</h2>
+				@RunsTable(runs)
+				<p class="m-0 text-xs text-bark">
+					Runs are CronJobs on the home server; trigger one manually with
+					<code class="rounded bg-forest-lighter px-1">kubectl -n prod create job --from=cronjob/bandung-coffeeshop-scraper-&lt;source&gt; manual-1</code>.
+				</p>
+			</section>
+			<form method="post" action="/sources" class={ cardCls }>
+				<h2 class={ sectionTitle }>Add or override a target</h2>
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr_3fr]">
+					@Field("Cafe") {
+						<select class={ inputCls } name="cafe_id">
+							<option value="">Choose a cafe...</option>
+							for _, c := range cafes {
+								<option value={ itoa(c.CafeID) } selected?={ c.CafeID == f.CafeID }>{ c.Name }</option>
+							}
+						</select>
+					}
+					@Field("Source") {
+						<select class={ inputCls } name="source">
+							for _, s := range models.Sources {
+								<option value={ s } selected?={ s == "linktree" }>{ s }</option>
+							}
+						</select>
+					}
+					@Field("External ID") {
+						<input class={ inputCls } name="external_id" placeholder="Linktree URL / Maps feature id 0x…:0x… / IG user id"/>
+					}
+				</div>
+				<button class={ btnAddCls } type="submit">
+					@Icon("plus", 14)
+					Save target
+				</button>
+			</form>
+			<section class={ cardCls }>
+				<form method="get" action="/sources" class="flex flex-wrap items-end gap-3">
+					@Field("Source") {
+						<select class={ inputCls } name="source">
+							<option value="">All sources</option>
+							for _, s := range models.Sources {
+								<option value={ s } selected?={ s == f.Source }>{ s }</option>
+							}
+						</select>
+					}
+					<label class={ checkRowCls, "pb-2" }>
+						<input type="checkbox" name="failing" value="1" checked?={ f.Failing }/>
+						<span class={ checkTextCls }>Failing only</span>
+					</label>
+					if f.CafeID != 0 {
+						<input type="hidden" name="cafe" value={ itoa(f.CafeID) }/>
+					}
+					<button class={ btnOutlineSmCls, "mb-0.5" } type="submit">Filter</button>
+					if f.CafeID != 0 || f.Source != "" || f.Failing {
+						<a class={ "pb-2 text-sm", inlineLinkCls } href="/sources">Reset</a>
+					}
+				</form>
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-sm text-forest">
+						<thead>
+							<tr class="border-b border-grove-light text-xs font-semibold text-bark">
+								<th class="py-2 pr-3">Cafe</th>
+								<th class="py-2 pr-3">Source</th>
+								<th class="py-2 pr-3">External ID</th>
+								<th class="py-2 pr-3">Last success</th>
+								<th class="py-2 pr-3">Failures</th>
+								<th class="py-2 pr-3">Last error</th>
+								<th class="py-2 pr-3">Snapshot</th>
+								<th class="py-2"></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, t := range targets {
+								@TargetRow(t, "")
+							}
+							if len(targets) == 0 {
+								<tr><td colspan="8" class="py-3 text-sm text-bark">No targets yet. They appear after the first scraper run.</td></tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		}
+	}
+}
+
+func targetKey(t models.SourceTarget) string {
+	return itoa(t.CafeID) + "/" + t.Source
+}
+
+func targetDOMID(t models.SourceTarget) string {
+	return "target-" + itoa(t.CafeID) + "-" + t.Source
+}
+
+templ TargetRow(t models.SourceTarget, errMsg string) {
+	<tr id={ targetDOMID(t) } class={ "border-b border-grove-light/60 align-top last:border-0", templ.KV("opacity-50", !t.Enabled) }>
+		<td class="py-2 pr-3">
+			<a class="font-semibold hover:underline" href={ templ.URL("/cafes/" + t.LocationID) }>{ t.CafeName }</a>
+		</td>
+		<td class="py-2 pr-3">
+			@SourceBadge(t.Source)
+		</td>
+		<td class="min-w-64 py-2 pr-3">
+			<form
+				class="flex gap-1"
+				hx-post={ "/sources/" + targetKey(t) + "/external-id" }
+				hx-target={ "#" + targetDOMID(t) }
+				hx-swap="outerHTML"
+			>
+				<input
+					class={ inputCls, "w-full py-1 text-xs" }
+					name="external_id"
+					value={ deref(t.ExternalID) }
+					placeholder={ externalIDHint(t.Source) }
+					aria-label="External ID"
+				/>
+				<button class={ btnOutlineSmCls, "px-2 text-xs" } type="submit">Save</button>
+			</form>
+			if errMsg != "" {
+				<p class={ rowErrorCls, "mt-1 text-xs" } role="alert">{ errMsg }</p>
+			}
+		</td>
+		<td class="whitespace-nowrap py-2 pr-3 text-xs" title={ fmtTimePtr(t.LastSuccessAt) }>{ agoPtr(t.LastSuccessAt) }</td>
+		<td class={ "py-2 pr-3 text-xs", templ.KV("font-semibold text-red-700", t.ConsecutiveFailures >= 3) }>{ itoa(t.ConsecutiveFailures) }</td>
+		<td class="max-w-xs break-words py-2 pr-3 text-xs text-red-700">{ truncate(deref(t.LastError), 200) }</td>
+		<td class="whitespace-nowrap py-2 pr-3 text-xs">
+			if t.LatestSnapshotID != nil {
+				<a class={ inlineLinkCls } href={ templ.URL("/snapshots/" + i64p(t.LatestSnapshotID)) } target="_blank">{ agoPtr(t.LatestSnapshotAt) }</a>
+			} else {
+				—
+			}
+		</td>
+		<td class="whitespace-nowrap py-2">
+			<div class="flex gap-1">
+				<button
+					class={ btnOutlineSmCls, "px-2 text-xs" }
+					hx-post={ "/sources/" + targetKey(t) + "/enabled?v=" + boolParam(!t.Enabled) }
+					hx-target={ "#" + targetDOMID(t) }
+					hx-swap="outerHTML"
+				>
+					if t.Enabled {
+						Disable
+					} else {
+						Enable
+					}
+				</button>
+				if t.ConsecutiveFailures > 0 {
+					<button
+						class={ btnOutlineSmCls, "px-2 text-xs" }
+						hx-post={ "/sources/" + targetKey(t) + "/reset" }
+						hx-target={ "#" + targetDOMID(t) }
+						hx-swap="outerHTML"
+					>
+						@Icon("rotate-ccw", 12)
+						Reset failures
+					</button>
+				}
+			</div>
+		</td>
+	</tr>
+}
+
+func externalIDHint(source string) string {
+	switch source {
+	case "gmaps":
+		return "auto-resolved feature id"
+	case "instagram":
+		return "auto-resolved user id"
+	default:
+		return "auto-discovered from IG bio"
+	}
+}
+
+templ SnapshotPage(s *models.Snapshot) {
+	@Layout("Snapshot", NavSources) {
+		@Page(pageCls) {
+			@BackLink("/sources", "Back to sources")
+			<div class="flex flex-wrap items-baseline gap-3">
+				<h1 class={ h1Cls }>Snapshot #{ i64(s.ID) }</h1>
+				<a class="text-sm text-bark hover:underline" href={ templ.URL("/cafes/" + s.LocationID) }>{ s.CafeName }</a>
+			</div>
+			<div class="-mt-3 flex flex-wrap items-center gap-2 text-xs text-bark">
+				@SourceBadge(s.Source)
+				<span>fetched { fmtTime(s.FetchedAt) }</span>
+				if s.Hash != nil {
+					<span class="font-mono">{ *s.Hash }</span>
+				}
+			</div>
+			<section class={ cardCls }>
+				<h2 class={ sectionTitle }>Parsed</h2>
+				<pre class="m-0 max-h-[32rem] overflow-auto rounded-xl bg-forest-lighter p-3 text-xs text-forest">{ prettyJSON(s.Parsed) }</pre>
+			</section>
+			<section class={ cardCls }>
+				<details>
+					<summary class={ sectionTitle, "cursor-pointer" }>Raw response</summary>
+					<pre class="mt-3 mb-0 max-h-[48rem] overflow-auto rounded-xl bg-forest-lighter p-3 text-xs text-forest">{ prettyJSON(s.Raw) }</pre>
+				</details>
+			</section>
+		}
+	}
+}

@@ -1,0 +1,222 @@
+package templates
+
+import (
+	"github.com/dta32/bandung-coffeeshop-admin/models"
+	"time"
+)
+
+// FeedForm is used for create-from-post, manual create and edit.
+type FeedForm struct {
+	Action      string
+	Title       string
+	CafeName    string
+	LocationID  string
+	Content     string
+	Author      string
+	Link        string
+	PublishedAt string
+	ExpiresAt   string
+	Visible     bool
+	// Choices are the selectable images (post media); Selected the chosen ones.
+	Choices  []string
+	Selected []string
+	// FreeImages allows editing image URLs as text (manual / edit).
+	FreeImages bool
+	Post       *models.Post
+	Error      string
+}
+
+templ FeedFormPage(f FeedForm) {
+	@Layout(f.Title, feedNav(f)) {
+		@Page(pageCls) {
+			@BackLink(feedCancel(f), feedBackLabel(f))
+			<div class="flex flex-wrap items-baseline gap-3">
+				<h1 class={ h1Cls }>{ f.Title }</h1>
+				<a class="text-sm text-bark hover:underline" href={ templ.URL("/cafes/" + f.LocationID) }>{ f.CafeName }</a>
+			</div>
+			<form method="post" action={ templ.URL(f.Action) } class="flex flex-col gap-6">
+				if f.Error != "" {
+					@ErrorBox(f.Error)
+				}
+				if f.Post != nil {
+					<section class={ cardCls }>
+						<h2 class={ sectionTitle }>Original post</h2>
+						<p class="m-0 text-xs text-bark">
+							{ fmtTime(f.Post.Value.TakenAt) }
+							if f.Post.Value.IsCollab {
+								· collab by { "@" + f.Post.Value.Owner }
+							}
+							if f.Post.Value.Permalink != "" {
+								· <a class={ inlineLinkCls } href={ templ.URL(f.Post.Value.Permalink) } target="_blank" rel="noopener noreferrer">open on Instagram</a>
+							}
+						</p>
+						<p class="m-0 whitespace-pre-wrap break-words text-sm text-forest">{ f.Post.Value.Caption }</p>
+					</section>
+				}
+				<section class={ cardCls }>
+					<h2 class={ sectionTitle }>Content</h2>
+					@Field("Content") {
+						<textarea class={ inputCls } name="content" rows="8">{ f.Content }</textarea>
+					}
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						@Field("Author") {
+							<input class={ inputCls } name="author" value={ f.Author }/>
+						}
+						@Field("Link") {
+							<input class={ inputCls } type="url" name="link" value={ f.Link } placeholder="https://www.instagram.com/p/..."/>
+						}
+					</div>
+				</section>
+				<section class={ cardCls }>
+					<h2 class={ sectionTitle }>Images</h2>
+					if len(f.Choices) > 0 {
+						<p class="m-0 text-xs text-bark">Untick the images you don't want in the feed entry.</p>
+						<div class="flex flex-wrap gap-2">
+							for _, u := range f.Choices {
+								<label class="relative block cursor-pointer">
+									<input type="checkbox" name="image" value={ u } checked?={ contains(f.Selected, u) } class="peer absolute left-2 top-2 z-10"/>
+									<img src={ thumb(u, 240) } alt="" class="h-32 w-24 rounded-xl object-cover opacity-40 peer-checked:opacity-100" loading="lazy"/>
+								</label>
+							}
+						</div>
+					}
+					if f.FreeImages {
+						@Field("Image URLs (one per line)") {
+							<textarea class={ inputCls, "font-mono text-xs" } name="images_text" rows="4">{ joinLines(f.Selected) }</textarea>
+						}
+					}
+				</section>
+				<section class={ cardCls }>
+					<h2 class={ sectionTitle }>Publishing</h2>
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						@Field("Published at (" + TZ.String() + ")") {
+							<input class={ inputCls } type="datetime-local" name="published_at" value={ f.PublishedAt }/>
+						}
+						@Field("Expires at (optional)") {
+							<input class={ inputCls } type="datetime-local" name="expires_at" value={ f.ExpiresAt }/>
+						}
+					</div>
+					<label class={ checkRowCls }>
+						<input type="checkbox" name="visible" value="1" checked?={ f.Visible }/>
+						<span class={ checkTextCls }>Visible on the site</span>
+					</label>
+				</section>
+				<div class="flex items-center justify-end gap-2">
+					<a class={ btnCancelCls } href={ templ.URL(feedCancel(f)) }>Cancel</a>
+					<button class={ btnSubmitCls } type="submit" data-saving-label="Saving...">Save feed entry</button>
+				</div>
+			</form>
+		}
+	}
+}
+
+func feedNav(f FeedForm) Nav {
+	if f.Post != nil {
+		return NavPosts
+	}
+	return NavCafes
+}
+
+func feedCancel(f FeedForm) string {
+	if f.Post != nil {
+		return "/posts"
+	}
+	return "/cafes/" + f.LocationID + "/feed"
+}
+
+func feedBackLabel(f FeedForm) string {
+	if f.Post != nil {
+		return "Back to posts"
+	}
+	return "Back to feed"
+}
+
+func joinLines(list []string) string {
+	out := ""
+	for i, s := range list {
+		if i > 0 {
+			out += "\n"
+		}
+		out += s
+	}
+	return out
+}
+
+templ FeedListPage(locationID, cafeName string, items []models.Feed, now time.Time, ok string) {
+	@Layout(cafeName+" · feed", NavCafes) {
+		@Page(pageCls) {
+			@BackLink("/cafes/"+locationID, "Back to "+cafeName)
+			<div class="flex items-center justify-between">
+				<div class="flex items-baseline gap-3">
+					<h1 class={ h1Cls }>Feed</h1>
+					<span class="text-sm text-bark">{ cafeName }</span>
+				</div>
+				<a class={ btnNewCls } href={ templ.URL("/cafes/" + locationID + "/feed/new") }>
+					@Icon("plus", 16)
+					New entry
+				</a>
+			</div>
+			@Notice(ok, "")
+			if len(items) == 0 {
+				<p class="m-0 text-sm text-bark">No feed entries yet. Create one here or from a <a class={ inlineLinkCls } href="/posts">new Instagram post</a>.</p>
+			}
+			<div class="flex flex-col gap-3">
+				for _, f := range items {
+					@FeedRow(locationID, f, now)
+				}
+			</div>
+		}
+	}
+}
+
+templ FeedRow(locationID string, f models.Feed, now time.Time) {
+	<article id={ "feed-" + itoa(f.ID) } class="flex flex-col gap-3 rounded-2xl bg-white p-5 md:flex-row">
+		if len(f.Images) > 0 {
+			<img src={ thumb(f.Images[0], 240) } alt="" class="h-32 w-24 shrink-0 rounded-xl object-cover" loading="lazy"/>
+		}
+		<div class="flex min-w-0 flex-1 flex-col gap-1">
+			<div class="flex flex-wrap items-center gap-2 text-xs text-bark">
+				if f.Active(now) {
+					@StatusBadge("live")
+				} else if !f.Visible {
+					@StatusBadge("hidden")
+				} else {
+					@StatusBadge("expired")
+				}
+				<span>{ fmtTime(f.PublishedAt) }</span>
+				if f.ExpiresAt != nil {
+					<span>· expires { fmtTimePtr(f.ExpiresAt) }</span>
+				}
+				<span>· by { f.Author }</span>
+				if len(f.Images) > 1 {
+					<span>· { itoa(len(f.Images)) } images</span>
+				}
+			</div>
+			<p class="m-0 whitespace-pre-wrap break-words text-sm text-forest">{ truncate(f.Content, 500) }</p>
+			if f.Link != nil {
+				<a class={ "text-xs", inlineLinkCls } href={ templ.URL(*f.Link) } target="_blank" rel="noopener noreferrer">{ truncate(*f.Link, 80) }</a>
+			}
+		</div>
+		<div class="flex shrink-0 gap-2 md:flex-col">
+			<a class={ btnOutlineSmCls } href={ templ.URL("/cafes/" + locationID + "/feed/" + itoa(f.ID) + "/edit") }>
+				@Icon("pencil", 14)
+				Edit
+			</a>
+			<button
+				class={ btnOutlineSmCls }
+				hx-post={ "/cafes/" + locationID + "/feed/" + itoa(f.ID) + "/visible?v=" + boolParam(!f.Visible) }
+				hx-target={ "#feed-" + itoa(f.ID) }
+				hx-swap="outerHTML"
+				hx-disabled-elt="this"
+			>
+				if f.Visible {
+					@Icon("eye-off", 14)
+					Hide
+				} else {
+					@Icon("eye", 14)
+					Unhide
+				}
+			</button>
+		</div>
+	</article>
+}

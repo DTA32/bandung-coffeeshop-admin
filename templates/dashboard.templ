@@ -1,0 +1,125 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+type homeSection struct {
+	href  string
+	title string
+	desc  string
+	icon  string
+}
+
+// Copy from bandung-coffeeshop-fe-console src/routes/admin.index.tsx.
+var consoleSections = []homeSection{
+	{"/cafes", "Cafes", "Edit a cafe and all its data: details, prices, review, ratings, tags, images.", "coffee"},
+	{"/locations", "Locations", "Manage districts, areas and points of interest plus their images.", "map-pin"},
+	{"/tags", "Tags", "Create and edit the tags that can be assigned to cafes.", "tag"},
+	{"/rating-types", "Rating types", "Manage the rating dimensions themselves (e.g. Vibe, Price) and their labels.", "layers"},
+	{"/rating-categories", "Rating categories", "Manage the score buckets within each rating dimension.", "star"},
+}
+
+templ DashboardPage(d *models.Dashboard) {
+	@Layout("Admin console", NavDashboard) {
+		@Page(pageCls) {
+			<h1 class={ h1Cls }>Admin console</h1>
+			<p class={ introCls }>
+				Manage BDGCafé content. English and Indonesian fields are edited side
+				by side.
+			</p>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				@freshnessCard("/changes", "Changes", "Review field changes the scraper found on Google Maps, Instagram and Linktree.", "list-checks", d.PendingChanges, "pending")
+				@freshnessCard("/posts", "Instagram posts", "Turn new Instagram posts into cafe feed entries, or ignore them.", "image", d.PendingPosts, "pending")
+				@freshnessCard("/sources?failing=1", "Sources", "Enable, override or reset what the scraper fetches per cafe.", "activity", d.FailingTargets, "failing")
+				for _, s := range consoleSections {
+					@homeCard(s.href, s.title, s.desc, s.icon)
+				}
+			</div>
+			<section class={ cardCls }>
+				<h2 class={ sectionTitle }>Last scraper runs</h2>
+				@RunsTable(d.LastRuns)
+			</section>
+		}
+	}
+}
+
+templ homeCard(href, title, desc, icon string) {
+	<a href={ templ.URL(href) } class="flex items-start gap-4 rounded-2xl bg-white p-5 hover:shadow-sm">
+		<div class="rounded-xl bg-forest-lighter p-3 text-moss">
+			@Icon(icon, 22)
+		</div>
+		<div class="flex flex-col gap-1">
+			<span class="text-base font-bold text-forest">{ title }</span>
+			<span class="text-xs text-bark">{ desc }</span>
+		</div>
+	</a>
+}
+
+// freshnessCard is homeCard plus a count pill for the queues.
+templ freshnessCard(href, title, desc, icon string, n int, what string) {
+	<a href={ templ.URL(href) } class="flex items-start gap-4 rounded-2xl bg-white p-5 hover:shadow-sm">
+		<div class="rounded-xl bg-forest-lighter p-3 text-moss">
+			@Icon(icon, 22)
+		</div>
+		<div class="flex flex-1 flex-col gap-1">
+			<span class="flex items-center justify-between gap-2 text-base font-bold text-forest">
+				{ title }
+				<span class={ pillCls, countColor(n, what) }>{ itoa(n) } { what }</span>
+			</span>
+			<span class="text-xs text-bark">{ desc }</span>
+		</div>
+	</a>
+}
+
+func countColor(n int, what string) string {
+	switch {
+	case n == 0:
+		return "bg-forest-lighter text-moss"
+	case what == "failing":
+		return "bg-red-50 text-red-700"
+	default:
+		return "bg-amber-50 text-amber-700"
+	}
+}
+
+templ RunsTable(runs []models.ScrapeRun) {
+	if len(runs) == 0 {
+		<p class="m-0 text-sm text-bark">No runs yet.</p>
+	} else {
+		<div class="overflow-x-auto">
+			<table class="w-full text-left text-sm text-forest">
+				<thead>
+					<tr class="border-b border-grove-light text-xs font-semibold text-bark">
+						<th class="py-2 pr-3">Source</th>
+						<th class="py-2 pr-3">Started</th>
+						<th class="py-2 pr-3">Finished</th>
+						<th class="py-2 pr-3">OK</th>
+						<th class="py-2 pr-3">Failed</th>
+						<th class="py-2 pr-3">Proposals</th>
+						<th class="py-2">Error</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, r := range runs {
+						<tr class="border-b border-grove-light/60 align-top last:border-0">
+							<td class="py-2 pr-3">
+								@SourceBadge(r.Source)
+							</td>
+							<td class="py-2 pr-3 whitespace-nowrap" title={ fmtTime(r.StartedAt) }>{ ago(r.StartedAt) }</td>
+							<td class="py-2 pr-3 whitespace-nowrap">
+								if r.FinishedAt == nil {
+									<span class={ pillCls, statusColor("running") }>running / crashed</span>
+								} else {
+									{ fmtTimePtr(r.FinishedAt) }
+								}
+							</td>
+							<td class="py-2 pr-3">{ itoa(r.OK) }</td>
+							<td class={ "py-2 pr-3", templ.KV("font-semibold text-red-700", r.Failed > 0) }>{ itoa(r.Failed) }</td>
+							<td class="py-2 pr-3">{ itoa(r.Proposals) }</td>
+							<td class="max-w-md py-2 text-xs text-red-700">{ deref(r.Error) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}

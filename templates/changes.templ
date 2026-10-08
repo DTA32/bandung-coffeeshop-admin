@@ -1,0 +1,188 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+templ ChangesPage(groups []models.CafeProposals, cafeFilter int, ok, errMsg string) {
+	@Layout("Changes", NavChanges) {
+		@Page(pageCls) {
+			@BackLink("/", "Admin home")
+			<div class="flex items-center justify-between">
+				<h1 class={ h1Cls }>Changes</h1>
+				if cafeFilter != 0 {
+					<a href="/changes" class={ btnCancelCls }>Show all cafes</a>
+				}
+			</div>
+			<p class={ introCls }>
+				Field changes the scraper detected, grouped by cafe. Approving writes the live
+				value and bumps the cafe's last-updated date. Informational rows only need a look.
+			</p>
+			@Notice(ok, errMsg)
+			if len(groups) == 0 {
+				<p class="m-0 text-sm text-bark">Nothing to review.</p>
+			}
+			for _, g := range groups {
+				<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) }>
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						<div class="flex items-baseline gap-2">
+							<a class="text-base font-bold text-forest hover:underline" href={ templ.URL("/cafes/" + g.LocationID) }>{ g.CafeName }</a>
+							<span class="text-xs text-bark">{ g.LocationID }</span>
+						</div>
+						if hasApplicable(g.Items) {
+							<form
+								method="post"
+								action={ templ.URL("/changes/cafe/" + itoa(g.CafeID) + "/approve-all") }
+							>
+								<button class={ btnOutlineSmCls } type="submit" data-confirm="Approve every proposed value for this cafe as-is?">
+									@Icon("check", 14)
+									Approve all
+								</button>
+							</form>
+						}
+					</div>
+					<div class="flex flex-col">
+						for _, p := range g.Items {
+							@ProposalRow(p, "")
+						}
+					</div>
+				</section>
+			}
+		}
+	}
+}
+
+func hasApplicable(items []models.Proposal) bool {
+	for _, p := range items {
+		if !models.IsInformational(p.Field) {
+			return true
+		}
+	}
+	return false
+}
+
+templ ProposalRow(p models.Proposal, errMsg string) {
+	<div id={ "proposal-" + i64(p.ID) } class="grid grid-cols-1 gap-3 border-t border-grove-light py-3 md:grid-cols-[10rem_1fr_9.5rem]">
+		<div class="flex flex-col gap-1">
+			<span class="text-sm font-semibold text-forest">{ fieldLabel(p.Field) }</span>
+			@SourceBadge(p.Source)
+			<span class="text-xs text-bark" title={ fmtTime(p.CreatedAt) }>detected { ago(p.CreatedAt) }</span>
+		</div>
+		<div class="flex min-w-0 flex-col gap-2 text-sm text-forest">
+			if models.IsInformational(p.Field) {
+				<div class="whitespace-pre-wrap break-words rounded-xl bg-forest-lighter p-3">{ displayValue(p.Field, p.NewValue) }</div>
+				if p.Field == "ig_bio" && len(p.OldValue) > 0 {
+					<details class="text-xs text-bark">
+						<summary class="cursor-pointer">Previous bio</summary>
+						<div class="mt-1 whitespace-pre-wrap">{ displayValue(p.Field, p.OldValue) }</div>
+					</details>
+				}
+			} else {
+				<div class="grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-1">
+					<span class={ labelCls }>Now</span>
+					<span class="break-words">{ displayValue(p.Field, p.Current) }</span>
+					<span class={ labelCls }>Proposed</span>
+					<span class="break-words font-semibold text-moss">{ displayValue(p.Field, p.NewValue) }</span>
+				</div>
+			}
+			<div class="flex flex-wrap gap-3 text-xs">
+				if p.EvidenceURL != nil {
+					<a class={ "flex items-center gap-1", inlineLinkCls } href={ templ.URL(*p.EvidenceURL) } target="_blank" rel="noopener noreferrer">
+						Source
+						@Icon("external-link", 12)
+					</a>
+				}
+				if p.SnapshotID != nil {
+					<a class={ inlineLinkCls } href={ templ.URL("/snapshots/" + i64p(p.SnapshotID)) } target="_blank">Raw snapshot</a>
+				}
+			</div>
+			if days := hoursDays(p.NewValue); len(days) > 0 {
+				<details class="text-xs text-bark">
+					<summary class="cursor-pointer">Per-day hours from Google</summary>
+					<ul class="mt-1 pl-4">
+						for _, d := range days {
+							<li>{ d }</li>
+						}
+					</ul>
+				</details>
+			}
+			if errMsg != "" {
+				<p class={ rowErrorCls } role="alert">{ errMsg }</p>
+			}
+		</div>
+		<div class="flex flex-col items-stretch gap-1">
+			if models.IsInformational(p.Field) {
+				<a class={ btnOutlineSmCls } href={ templ.URL("/cafes/" + p.LocationID) }>Open cafe</a>
+				<button
+					class={ btnOutlineSmCls }
+					hx-post={ "/changes/" + i64(p.ID) + "/reject" }
+					hx-target={ "#proposal-" + i64(p.ID) }
+					hx-swap="outerHTML"
+					hx-disabled-elt="this"
+				>Dismiss</button>
+			} else {
+				<button
+					class={ btnPrimarySmCls }
+					hx-post={ "/changes/" + i64(p.ID) + "/approve" }
+					hx-target={ "#proposal-" + i64(p.ID) }
+					hx-swap="outerHTML"
+					hx-disabled-elt="this"
+				>
+					@Icon("check", 14)
+					Approve
+				</button>
+				<details>
+					<summary class={ "list-none cursor-pointer", btnOutlineSmCls }>
+						@Icon("pencil", 14)
+						Edit & approve
+					</summary>
+					<form
+						class="mt-2 flex flex-col gap-1"
+						hx-post={ "/changes/" + i64(p.ID) + "/approve" }
+						hx-target={ "#proposal-" + i64(p.ID) }
+						hx-swap="outerHTML"
+					>
+						<input type="hidden" name="edit" value="1"/>
+						@proposalEditInputs(p)
+						<button class={ btnPrimarySmCls } type="submit">Save & approve</button>
+					</form>
+				</details>
+				<button
+					class={ "justify-center", btnDeleteSmCls }
+					hx-post={ "/changes/" + i64(p.ID) + "/reject" }
+					hx-target={ "#proposal-" + i64(p.ID) }
+					hx-swap="outerHTML"
+					hx-disabled-elt="this"
+				>
+					@Icon("x", 14)
+					Reject
+				</button>
+			}
+		</div>
+	</div>
+}
+
+templ proposalEditInputs(p models.Proposal) {
+	switch p.Field {
+		case "hours":
+			<input class={ inputCls } name="open" value={ hoursPart(p.NewValue, "open") } placeholder="10:00" aria-label="Open hour (HH:MM)"/>
+			<input class={ inputCls } name="close" value={ hoursPart(p.NewValue, "close") } placeholder="22:00" aria-label="Close hour (HH:MM)"/>
+		case "status":
+			<select class={ inputCls } name="value" aria-label="Status">
+				<option value="closed" selected?={ jsonString(p.NewValue) == "closed" }>closed</option>
+				<option value="active" selected?={ jsonString(p.NewValue) == "active" }>active</option>
+			</select>
+		case "address":
+			<textarea class={ inputCls } name="value" rows="3" aria-label="Address">{ jsonString(p.NewValue) }</textarea>
+		default:
+			<input class={ inputCls } name="value" value={ jsonString(p.NewValue) } aria-label={ fieldLabel(p.Field) }/>
+	}
+}
+
+templ ProposalResolved(p models.Proposal, status, detail string) {
+	<div id={ "proposal-" + i64(p.ID) } class="flex flex-wrap items-center gap-2 border-t border-grove-light py-3 text-sm text-forest">
+		<span class="font-semibold">{ fieldLabel(p.Field) }</span>
+		@StatusBadge(status)
+		if detail != "" {
+			<span class="text-bark">{ detail }</span>
+		}
+	</div>
+}
