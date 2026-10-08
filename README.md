@@ -35,6 +35,13 @@ utils/           request/value helpers
 static/          embedded CSS, JS, vendored libs
 ```
 
+## Highlights
+
+- Location form: area / district geometries are edited on a map (leaflet-geoman) bound to the GeoJSON textarea.
+- Cafe form: a "Touch" button on each saved, visible tag bumps `cafe_tag.updated_at` (the public site's cafe
+  "remark" is the most recently updated visible tag) without saving the form or touching `cafe.updated_at`.
+- Cafe list: sort by least / most recently updated (`?sort=updated_asc|updated_desc`).
+
 ## Local setup
 
 ```bash

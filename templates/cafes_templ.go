@@ -8,7 +8,11 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/dta32/bandung-coffeeshop-admin/models"
+import (
+	"time"
+
+	"github.com/dta32/bandung-coffeeshop-admin/models"
+)
 
 // CafeListPage ports admin.cafes.index.tsx. The search box filters the
 // rendered rows client-side (static/js/forms.js), like the console.
@@ -172,7 +176,7 @@ func CafeListPage(items []models.CafeListItem, q, sort, ok string) templ.Compone
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(q)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 28, Col: 15}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 32, Col: 15}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 				if templ_7745c5c3_Err != nil {
@@ -269,7 +273,7 @@ func CafeListPage(items []models.CafeListItem, q, sort, ok string) templ.Compone
 					var templ_7745c5c3_Var18 templ.SafeURL
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/cafes/" + c.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 43, Col: 42}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 47, Col: 42}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
@@ -295,7 +299,7 @@ func CafeListPage(items []models.CafeListItem, q, sort, ok string) templ.Compone
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(lower(c.Name + " " + c.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 43, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 47, Col: 106}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 					if templ_7745c5c3_Err != nil {
@@ -308,7 +312,7 @@ func CafeListPage(items []models.CafeListItem, q, sort, ok string) templ.Compone
 					var templ_7745c5c3_Var21 string
 					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 45, Col: 63}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 49, Col: 63}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 					if templ_7745c5c3_Err != nil {
@@ -321,7 +325,7 @@ func CafeListPage(items []models.CafeListItem, q, sort, ok string) templ.Compone
 					var templ_7745c5c3_Var22 string
 					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(c.ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 46, Col: 45}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 50, Col: 45}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 					if templ_7745c5c3_Err != nil {
@@ -468,7 +472,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var30 string
 					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 66, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 70, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 					if templ_7745c5c3_Err != nil {
@@ -481,7 +485,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var31 string
 					templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(c.ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 67, Col: 43}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 71, Col: 43}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 					if templ_7745c5c3_Err != nil {
@@ -516,7 +520,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var34 templ.SafeURL
 					templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/cafes/" + c.ID + "/feed"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 70, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 74, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 					if templ_7745c5c3_Err != nil {
@@ -551,7 +555,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var37 templ.SafeURL
 					templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/changes?cafe=" + itoa(c.CafeID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 71, Col: 83}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 75, Col: 83}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 					if templ_7745c5c3_Err != nil {
@@ -586,7 +590,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var40 templ.SafeURL
 					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/posts?cafe=" + itoa(c.CafeID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 72, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 76, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 					if templ_7745c5c3_Err != nil {
@@ -621,7 +625,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var43 templ.SafeURL
 					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/sources?cafe=" + itoa(c.CafeID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 73, Col: 83}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 77, Col: 83}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 					if templ_7745c5c3_Err != nil {
@@ -656,7 +660,7 @@ func CafeFormPage(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMs
 					var templ_7745c5c3_Var46 templ.SafeURL
 					templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("https://bdgcafe.com/cafe/" + c.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 74, Col: 111}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 78, Col: 111}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 					if templ_7745c5c3_Err != nil {
@@ -731,7 +735,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 		var templ_7745c5c3_Var48 templ.SafeURL
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(cafeAction(c, isNew)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 87, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 91, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -827,7 +831,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 				var templ_7745c5c3_Var56 string
 				templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 95, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 99, Col: 54}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var56)
 				if templ_7745c5c3_Err != nil {
@@ -863,7 +867,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 				var templ_7745c5c3_Var59 string
 				templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 97, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 101, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var59)
 				if templ_7745c5c3_Err != nil {
@@ -917,7 +921,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var63 string
 			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 101, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 105, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 			if templ_7745c5c3_Err != nil {
@@ -974,7 +978,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var67 string
 			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(c.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 106, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 110, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 			if templ_7745c5c3_Err != nil {
@@ -1027,7 +1031,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var71 string
 			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(c.DescriptionIndo)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 109, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 113, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 			if templ_7745c5c3_Err != nil {
@@ -1084,7 +1088,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var75 string
 			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(c.GmapsID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 114, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 118, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var75)
 			if templ_7745c5c3_Err != nil {
@@ -1142,7 +1146,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 				var templ_7745c5c3_Var79 string
 				templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.ResolveAttributeValue(s)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 119, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 123, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var79)
 				if templ_7745c5c3_Err != nil {
@@ -1165,7 +1169,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 				var templ_7745c5c3_Var80 string
 				templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(s)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 119, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 123, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 				if templ_7745c5c3_Err != nil {
@@ -1271,7 +1275,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var88 string
 			templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(c.Instagram))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 130, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 134, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var88)
 			if templ_7745c5c3_Err != nil {
@@ -1324,7 +1328,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var92 string
 			templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(c.OpenHour))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 133, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 137, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var92)
 			if templ_7745c5c3_Err != nil {
@@ -1377,7 +1381,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var96 string
 			templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(c.CloseHour))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 136, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 140, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var96)
 			if templ_7745c5c3_Err != nil {
@@ -1434,7 +1438,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var100 string
 			templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(c.Phone))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 142, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 146, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var100)
 			if templ_7745c5c3_Err != nil {
@@ -1487,7 +1491,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var104 string
 			templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(c.Menu))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 145, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 149, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var104)
 			if templ_7745c5c3_Err != nil {
@@ -1609,7 +1613,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var113 string
 			templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.ResolveAttributeValue(w)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 157, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 161, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var113)
 			if templ_7745c5c3_Err != nil {
@@ -1654,7 +1658,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var116 string
 			templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.JoinStringErrs(w)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 158, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 162, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var116))
 			if templ_7745c5c3_Err != nil {
@@ -1733,7 +1737,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = cafeTagsSection(c.Tags, opts.Tags).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = cafeTagsSection(c.ID, c.Tags, opts.Tags).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1758,7 +1762,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var122 string
 			templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.URL("/cafes/" + c.ID + "/delete"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 180, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 184, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var122)
 			if templ_7745c5c3_Err != nil {
@@ -1771,7 +1775,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 			var templ_7745c5c3_Var123 string
 			templ_7745c5c3_Var123, templ_7745c5c3_Err = templ.ResolveAttributeValue("Delete cafe \"" + c.Name + "\"? It will be marked as deleted.")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 182, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 186, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var123)
 			if templ_7745c5c3_Err != nil {
@@ -1854,7 +1858,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 		var templ_7745c5c3_Var129 string
 		templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.JoinStringErrs(cafeSubmit(isNew))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 192, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 196, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var129))
 		if templ_7745c5c3_Err != nil {
@@ -2017,7 +2021,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var137 string
 			templ_7745c5c3_Var137, templ_7745c5c3_Err = templ.JoinStringErrs(row.group)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 258, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 262, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var137))
 			if templ_7745c5c3_Err != nil {
@@ -2052,7 +2056,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var140 string
 			templ_7745c5c3_Var140, templ_7745c5c3_Err = templ.ResolveAttributeValue(row.min)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 260, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 264, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var140)
 			if templ_7745c5c3_Err != nil {
@@ -2065,7 +2069,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var141 string
 			templ_7745c5c3_Var141, templ_7745c5c3_Err = templ.ResolveAttributeValue(priceValue(p, row.min))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 260, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 264, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var141)
 			if templ_7745c5c3_Err != nil {
@@ -2078,7 +2082,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var142 string
 			templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.ResolveAttributeValue(row.group + " min")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 260, Col: 155}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 264, Col: 155}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var142)
 			if templ_7745c5c3_Err != nil {
@@ -2113,7 +2117,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var145 string
 			templ_7745c5c3_Var145, templ_7745c5c3_Err = templ.ResolveAttributeValue(row.max)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 261, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 265, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var145)
 			if templ_7745c5c3_Err != nil {
@@ -2126,7 +2130,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var146 string
 			templ_7745c5c3_Var146, templ_7745c5c3_Err = templ.ResolveAttributeValue(priceValue(p, row.max))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 261, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 265, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var146)
 			if templ_7745c5c3_Err != nil {
@@ -2139,7 +2143,7 @@ func cafePriceSection(p models.CafePrice) templ.Component {
 			var templ_7745c5c3_Var147 string
 			templ_7745c5c3_Var147, templ_7745c5c3_Err = templ.ResolveAttributeValue(row.group + " max")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 261, Col: 155}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 265, Col: 155}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var147)
 			if templ_7745c5c3_Err != nil {
@@ -2231,7 +2235,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var153 string
 			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(*rv.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 273, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 277, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var153)
 			if templ_7745c5c3_Err != nil {
@@ -2283,7 +2287,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var157 string
 			templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewFloat(rv, "overall"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 277, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 281, Col: 127}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var157)
 			if templ_7745c5c3_Err != nil {
@@ -2336,7 +2340,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var161 string
 			templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewFloat(rv, "wfc"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 280, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 284, Col: 119}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var161)
 			if templ_7745c5c3_Err != nil {
@@ -2389,7 +2393,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var165 string
 			templ_7745c5c3_Var165, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewFloat(rv, "personal"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 283, Col: 129}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 287, Col: 129}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var165)
 			if templ_7745c5c3_Err != nil {
@@ -2442,7 +2446,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var169 string
 			templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewVisited(rv))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 286, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 290, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var169)
 			if templ_7745c5c3_Err != nil {
@@ -2553,7 +2557,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var177 string
 			templ_7745c5c3_Var177, templ_7745c5c3_Err = templ.JoinStringErrs(reviewText(rv, false))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 295, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 299, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var177))
 			if templ_7745c5c3_Err != nil {
@@ -2606,7 +2610,7 @@ func cafeReviewSection(rv *models.Review) templ.Component {
 			var templ_7745c5c3_Var181 string
 			templ_7745c5c3_Var181, templ_7745c5c3_Err = templ.JoinStringErrs(reviewText(rv, true))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 298, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 302, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var181))
 			if templ_7745c5c3_Err != nil {
@@ -2734,7 +2738,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var187 string
 			templ_7745c5c3_Var187, templ_7745c5c3_Err = templ.ResolveAttributeValue("rating_enabled_" + rt.Type)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 342, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 346, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var187)
 			if templ_7745c5c3_Err != nil {
@@ -2757,7 +2761,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var188 string
 			templ_7745c5c3_Var188, templ_7745c5c3_Err = templ.JoinStringErrs(rt.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 343, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 347, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var188))
 			if templ_7745c5c3_Err != nil {
@@ -2775,7 +2779,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 				var templ_7745c5c3_Var189 string
 				templ_7745c5c3_Var189, templ_7745c5c3_Err = templ.JoinStringErrs(b)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 346, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 350, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var189))
 				if templ_7745c5c3_Err != nil {
@@ -2802,7 +2806,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var191 string
 			templ_7745c5c3_Var191, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmtFloat(bucketMin(opts.RatingCategories, rt.Type)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 352, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 356, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var191)
 			if templ_7745c5c3_Err != nil {
@@ -2815,7 +2819,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var192 string
 			templ_7745c5c3_Var192, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmtFloat(bucketMax(opts.RatingCategories, rt.Type)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 353, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 357, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var192)
 			if templ_7745c5c3_Err != nil {
@@ -2838,7 +2842,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var193 string
 			templ_7745c5c3_Var193, templ_7745c5c3_Err = templ.ResolveAttributeValue("score " + fmtFloat(bucketMin(opts.RatingCategories, rt.Type)) + "–" + fmtFloat(bucketMax(opts.RatingCategories, rt.Type)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 355, Col: 145}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 359, Col: 145}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var193)
 			if templ_7745c5c3_Err != nil {
@@ -2864,7 +2868,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var195 string
 			templ_7745c5c3_Var195, templ_7745c5c3_Err = templ.ResolveAttributeValue("rating_score_" + rt.Type)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 357, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 361, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var195)
 			if templ_7745c5c3_Err != nil {
@@ -2877,7 +2881,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var196 string
 			templ_7745c5c3_Var196, templ_7745c5c3_Err = templ.ResolveAttributeValue(ratingScore(ratings, rt.Type))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 358, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 362, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var196)
 			if templ_7745c5c3_Err != nil {
@@ -2890,7 +2894,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var197 string
 			templ_7745c5c3_Var197, templ_7745c5c3_Err = templ.ResolveAttributeValue(rt.Label + " score")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 359, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 363, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var197)
 			if templ_7745c5c3_Err != nil {
@@ -2935,7 +2939,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var200 string
 			templ_7745c5c3_Var200, templ_7745c5c3_Err = templ.ResolveAttributeValue("rating_override_" + rt.Type)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 366, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 370, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var200)
 			if templ_7745c5c3_Err != nil {
@@ -2948,7 +2952,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var201 string
 			templ_7745c5c3_Var201, templ_7745c5c3_Err = templ.ResolveAttributeValue(ratingOverride(ratings, rt.Type, false))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 367, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 371, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var201)
 			if templ_7745c5c3_Err != nil {
@@ -2961,7 +2965,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var202 string
 			templ_7745c5c3_Var202, templ_7745c5c3_Err = templ.ResolveAttributeValue(rt.Label + " override EN")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 368, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 372, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var202)
 			if templ_7745c5c3_Err != nil {
@@ -3006,7 +3010,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var205 string
 			templ_7745c5c3_Var205, templ_7745c5c3_Err = templ.ResolveAttributeValue("rating_override_indo_" + rt.Type)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 375, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 379, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var205)
 			if templ_7745c5c3_Err != nil {
@@ -3019,7 +3023,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var206 string
 			templ_7745c5c3_Var206, templ_7745c5c3_Err = templ.ResolveAttributeValue(ratingOverride(ratings, rt.Type, true))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 376, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 380, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var206)
 			if templ_7745c5c3_Err != nil {
@@ -3032,7 +3036,7 @@ func cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) te
 			var templ_7745c5c3_Var207 string
 			templ_7745c5c3_Var207, templ_7745c5c3_Err = templ.ResolveAttributeValue(rt.Label + " override ID")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 377, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 381, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var207)
 			if templ_7745c5c3_Err != nil {
@@ -3114,7 +3118,7 @@ func bucketMax(cats []models.RatingCategory, t string) float64 {
 	return out
 }
 
-func cafeTagsSection(assigned []models.CafeTag, tags []models.Tag) templ.Component {
+func cafeTagsSection(cafeID string, assigned []models.CafeTag, tags []models.Tag) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -3180,7 +3184,7 @@ func cafeTagsSection(assigned []models.CafeTag, tags []models.Tag) templ.Compone
 			return templ_7745c5c3_Err
 		}
 		for _, t := range tags {
-			templ_7745c5c3_Err = CafeTagRow(t, tagAssigned(assigned, t.ID), tagVisible(assigned, t.ID)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = CafeTagRow(t, tagAssigned(assigned, t.ID), tagVisible(assigned, t.ID), cafeID, savedTag(assigned, t.ID), currentRemarkTag(assigned) == t.ID).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -3308,8 +3312,10 @@ func cafeTagsSection(assigned []models.CafeTag, tags []models.Tag) templ.Compone
 }
 
 // CafeTagRow is one tag checkbox in the cafe form; the "visible" toggle only
-// shows while the tag is assigned. Also returned by POST /cafes/tags.
-func CafeTagRow(t models.Tag, isAssigned, visible bool) templ.Component {
+// shows while the tag is assigned. Also returned by POST /cafes/tags (saved nil).
+// saved is the tag's cafe_tag row when it exists in the DB: it enables the
+// "Touch" button (visible tags only) and the last-touched date.
+func CafeTagRow(t models.Tag, isAssigned, visible bool, cafeID string, saved *models.CafeTag, current bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -3337,7 +3343,7 @@ func CafeTagRow(t models.Tag, isAssigned, visible bool) templ.Component {
 		var templ_7745c5c3_Var222 string
 		templ_7745c5c3_Var222, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(t.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 486, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 492, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var222)
 		if templ_7745c5c3_Err != nil {
@@ -3360,7 +3366,7 @@ func CafeTagRow(t models.Tag, isAssigned, visible bool) templ.Component {
 		var templ_7745c5c3_Var223 string
 		templ_7745c5c3_Var223, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 487, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 493, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var223))
 		if templ_7745c5c3_Err != nil {
@@ -3378,7 +3384,7 @@ func CafeTagRow(t models.Tag, isAssigned, visible bool) templ.Component {
 			var templ_7745c5c3_Var224 string
 			templ_7745c5c3_Var224, templ_7745c5c3_Err = templ.JoinStringErrs(*t.Slug)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 489, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 495, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var224))
 			if templ_7745c5c3_Err != nil {
@@ -3406,7 +3412,7 @@ func CafeTagRow(t models.Tag, isAssigned, visible bool) templ.Component {
 		var templ_7745c5c3_Var225 string
 		templ_7745c5c3_Var225, templ_7745c5c3_Err = templ.ResolveAttributeValue("tag_visible_" + itoa(t.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 493, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 499, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var225)
 		if templ_7745c5c3_Err != nil {
@@ -3422,7 +3428,157 @@ func CafeTagRow(t models.Tag, isAssigned, visible bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "> visible</label></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "> visible</label> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if saved != nil {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 262, "<span class=\"flex items-center gap-2\" data-tag-touch-box")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if !isAssigned || !visible {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 263, " hidden")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, ">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = CafeTagTouch(cafeID, t.ID, saved.UpdatedAt, current, false).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "</span>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// CafeTagTouch is the per-row touch area: the last-touched time, a "current
+// remark" badge and the Touch button. It is also the response of
+// POST /cafes/{id}/tags/{tagId}/touch (justTouched) and is swapped in place.
+func CafeTagTouch(cafeID string, tagID int, updatedAt time.Time, current, justTouched bool) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var226 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var226 == nil {
+			templ_7745c5c3_Var226 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 267, "<span class=\"flex items-center gap-2\" id=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var227 string
+		templ_7745c5c3_Var227, templ_7745c5c3_Err = templ.ResolveAttributeValue("tag-touch-" + itoa(tagID))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 514, Col: 70}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var227)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 268, "\" data-tag-touch>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if current {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 269, "<span class=\"rounded-full bg-forest-lighter px-2 py-0.5 text-xs font-semibold text-forest\" data-current-remark>current remark</span> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 270, "<span class=\"text-xs text-bark\" title=\"cafe_tag.updated_at\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if justTouched {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 271, "Touched · just now · ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		var templ_7745c5c3_Var228 string
+		templ_7745c5c3_Var228, templ_7745c5c3_Err = templ.JoinStringErrs(fmtTime(updatedAt))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 522, Col: 23}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var228))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 272, "</span> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var229 = []any{btnOutlineSmCls}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var229...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 273, "<button type=\"button\" class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var230 string
+		templ_7745c5c3_Var230, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var229).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var230)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 274, "\" hx-post=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var231 string
+		templ_7745c5c3_Var231, templ_7745c5c3_Err = templ.ResolveAttributeValue("/cafes/" + cafeID + "/tags/" + itoa(tagID) + "/touch")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 527, Col: 67}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var231)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 275, "\" hx-target=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var232 string
+		templ_7745c5c3_Var232, templ_7745c5c3_Err = templ.ResolveAttributeValue("#tag-touch-" + itoa(tagID))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 528, Col: 42}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var232)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 276, "\" hx-swap=\"outerHTML\" hx-disabled-elt=\"this\" title=\"Bump this tag's updated_at so it becomes the cafe's remark\">Touch</button></span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -3447,22 +3603,43 @@ func NewTagError(msg string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var226 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var226 == nil {
-			templ_7745c5c3_Var226 = templ.NopComponent
+		templ_7745c5c3_Var233 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var233 == nil {
+			templ_7745c5c3_Var233 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var227 string
-		templ_7745c5c3_Var227, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
+		var templ_7745c5c3_Var234 string
+		templ_7745c5c3_Var234, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 501, Col: 6}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/cafes.templ`, Line: 540, Col: 6}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var227))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var234))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+func savedTag(assigned []models.CafeTag, id int) *models.CafeTag {
+	for i := range assigned {
+		if assigned[i].TagID == id {
+			return &assigned[i]
+		}
+	}
+	return nil
+}
+
+// currentRemarkTag is the visible tag with the newest updated_at (the one the
+// public site shows as the cafe's remark), or 0.
+func currentRemarkTag(assigned []models.CafeTag) int {
+	best, id := time.Time{}, 0
+	for _, a := range assigned {
+		if a.Visible && a.UpdatedAt.After(best) {
+			best, id = a.UpdatedAt, a.TagID
+		}
+	}
+	return id
 }
 
 func tagAssigned(assigned []models.CafeTag, id int) bool {

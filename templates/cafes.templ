@@ -1,6 +1,10 @@
 package templates
 
-import "github.com/dta32/bandung-coffeeshop-admin/models"
+import (
+	"time"
+
+	"github.com/dta32/bandung-coffeeshop-admin/models"
+)
 
 // CafeListPage ports admin.cafes.index.tsx. The search box filters the
 // rendered rows client-side (static/js/forms.js), like the console.
@@ -169,7 +173,7 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 		@cafePriceSection(c.Price)
 		@cafeReviewSection(c.Review)
 		@cafeRatingsSection(c.Ratings, opts)
-		@cafeTagsSection(c.Tags, opts.Tags)
+		@cafeTagsSection(c.ID, c.Tags, opts.Tags)
 		@ImagesEditor(c.Images)
 		// Actions
 		<div class="flex items-center justify-between">
@@ -446,12 +450,12 @@ func bucketMax(cats []models.RatingCategory, t string) float64 {
 	return out
 }
 
-templ cafeTagsSection(assigned []models.CafeTag, tags []models.Tag) {
+templ cafeTagsSection(cafeID string, assigned []models.CafeTag, tags []models.Tag) {
 	<section class={ cardCls }>
 		<h2 class={ sectionTitle }>Tags</h2>
 		<div class="flex flex-col gap-2" id="cafe-tag-list">
 			for _, t := range tags {
-				@CafeTagRow(t, tagAssigned(assigned, t.ID), tagVisible(assigned, t.ID))
+				@CafeTagRow(t, tagAssigned(assigned, t.ID), tagVisible(assigned, t.ID), cafeID, savedTag(assigned, t.ID), currentRemarkTag(assigned) == t.ID)
 			}
 		</div>
 		<div class="flex flex-wrap items-end gap-2 border-t border-grove-light pt-3" data-new-tag>
@@ -479,8 +483,10 @@ templ cafeTagsSection(assigned []models.CafeTag, tags []models.Tag) {
 }
 
 // CafeTagRow is one tag checkbox in the cafe form; the "visible" toggle only
-// shows while the tag is assigned. Also returned by POST /cafes/tags.
-templ CafeTagRow(t models.Tag, isAssigned, visible bool) {
+// shows while the tag is assigned. Also returned by POST /cafes/tags (saved nil).
+// saved is the tag's cafe_tag row when it exists in the DB: it enables the
+// "Touch" button (visible tags only) and the last-touched date.
+templ CafeTagRow(t models.Tag, isAssigned, visible bool, cafeID string, saved *models.CafeTag, current bool) {
 	<div class="flex items-center gap-3" data-tag-row>
 		<label class="flex flex-1 items-center gap-2">
 			<input type="checkbox" name="tag" value={ itoa(t.ID) } checked?={ isAssigned } data-tag-assign/>
@@ -493,12 +499,66 @@ templ CafeTagRow(t models.Tag, isAssigned, visible bool) {
 			<input type="checkbox" name={ "tag_visible_" + itoa(t.ID) } value="1" checked?={ visible }/>
 			visible
 		</label>
+		if saved != nil {
+			<span class="flex items-center gap-2" data-tag-touch-box hidden?={ !isAssigned || !visible }>
+				@CafeTagTouch(cafeID, t.ID, saved.UpdatedAt, current, false)
+			</span>
+		}
 	</div>
+}
+
+// CafeTagTouch is the per-row touch area: the last-touched time, a "current
+// remark" badge and the Touch button. It is also the response of
+// POST /cafes/{id}/tags/{tagId}/touch (justTouched) and is swapped in place.
+templ CafeTagTouch(cafeID string, tagID int, updatedAt time.Time, current, justTouched bool) {
+	<span class="flex items-center gap-2" id={ "tag-touch-" + itoa(tagID) } data-tag-touch>
+		if current {
+			<span class="rounded-full bg-forest-lighter px-2 py-0.5 text-xs font-semibold text-forest" data-current-remark>current remark</span>
+		}
+		<span class="text-xs text-bark" title="cafe_tag.updated_at">
+			if justTouched {
+				Touched · just now ·
+			}
+			{ fmtTime(updatedAt) }
+		</span>
+		<button
+			type="button"
+			class={ btnOutlineSmCls }
+			hx-post={ "/cafes/" + cafeID + "/tags/" + itoa(tagID) + "/touch" }
+			hx-target={ "#tag-touch-" + itoa(tagID) }
+			hx-swap="outerHTML"
+			hx-disabled-elt="this"
+			title="Bump this tag's updated_at so it becomes the cafe's remark"
+		>
+			Touch
+		</button>
+	</span>
 }
 
 // NewTagError replaces #new-tag-error after a failed inline create.
 templ NewTagError(msg string) {
 	{ msg }
+}
+
+func savedTag(assigned []models.CafeTag, id int) *models.CafeTag {
+	for i := range assigned {
+		if assigned[i].TagID == id {
+			return &assigned[i]
+		}
+	}
+	return nil
+}
+
+// currentRemarkTag is the visible tag with the newest updated_at (the one the
+// public site shows as the cafe's remark), or 0.
+func currentRemarkTag(assigned []models.CafeTag) int {
+	best, id := time.Time{}, 0
+	for _, a := range assigned {
+		if a.Visible && a.UpdatedAt.After(best) {
+			best, id = a.UpdatedAt, a.TagID
+		}
+	}
+	return id
 }
 
 func tagAssigned(assigned []models.CafeTag, id int) bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/dta32/bandung-coffeeshop-admin/models"
 	"github.com/dta32/bandung-coffeeshop-admin/repository"
@@ -16,6 +17,11 @@ type CafeController struct {
 
 func NewCafeController(repo *repository.CafeRepository, ratingTypes *repository.RatingTypeRepository) *CafeController {
 	return &CafeController{repo: repo, ratingTypes: ratingTypes}
+}
+
+// TouchTag bumps one saved cafe tag's updated_at; returns the new timestamp.
+func (c *CafeController) TouchTag(ctx context.Context, locationID string, tagID int) (time.Time, error) {
+	return c.repo.TouchTag(ctx, locationID, tagID)
 }
 
 func (c *CafeController) List(ctx context.Context, q, sort string) ([]models.CafeListItem, error) {

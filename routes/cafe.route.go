@@ -15,5 +15,6 @@ func CafeRoutes(mux *http.ServeMux, h *handlers.Handler) {
 	mux.Handle("GET /cafes/{id}", cafe.NewGetCafeHandler(h))
 	mux.Handle("POST /cafes/{id}", cafe.NewPostCafeEditHandler(h))
 	mux.Handle("POST /cafes/{id}/delete", cafe.NewPostCafeDeleteHandler(h))
+	mux.Handle("POST /cafes/{id}/tags/{tagId}/touch", cafe.NewPostCafeTagTouchHandler(h))
 	mux.Handle("POST /cafes/tags", cafe.NewPostCafeTagNewHandler(h))
 }

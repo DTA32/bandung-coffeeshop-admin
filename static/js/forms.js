@@ -319,6 +319,29 @@
     if (assign.checked) vis.querySelector('input').checked = true
   })
 
+  // Touch button area: only while the tag is assigned and visible in the form.
+  function syncTouchBox(row) {
+    var box = row.querySelector('[data-tag-touch-box]')
+    if (!box) return
+    var assigned = row.querySelector('[data-tag-assign]').checked
+    box.hidden = !(assigned && row.querySelector('[data-tag-visible] input').checked)
+  }
+  document.addEventListener('change', function (e) {
+    var row = e.target.closest && e.target.closest('[data-tag-row]')
+    if (row) syncTouchBox(row)
+  })
+
+  // After a touch, that tag is the newest: drop the "current remark" badge elsewhere.
+  document.addEventListener('htmx:afterSwap', function (e) {
+    var el = e.detail.elt
+    var mine = document.querySelector('[data-tag-touch][id="' + (e.detail.target && e.detail.target.id) + '"]')
+    var box = mine || (el && el.closest && el.closest('[data-tag-touch]'))
+    if (!box) return
+    document.querySelectorAll('[data-tag-touch] [data-current-remark]').forEach(function (b) {
+      if (!box.contains(b)) b.remove()
+    })
+  })
+
   // Inline "Add tag": clear the inputs and the error after a successful create.
   document.addEventListener('htmx:afterRequest', function (e) {
     var box = e.target.closest && e.target.closest('[data-new-tag]')

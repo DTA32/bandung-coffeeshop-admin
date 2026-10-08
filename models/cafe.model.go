@@ -4,6 +4,8 @@
 // current schema (weather, phone, menu).
 package models
 
+import "time"
+
 type Coordinates struct {
 	Lat float64
 	Lng float64
@@ -51,8 +53,9 @@ type Rating struct {
 }
 
 type CafeTag struct {
-	TagID   int
-	Visible bool
+	TagID     int
+	Visible   bool
+	UpdatedAt time.Time // cafe_tag.updated_at (UTC); zero for tags not saved yet
 }
 
 // Cafe is the full editable representation of a cafe across every related

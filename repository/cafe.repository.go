@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/dta32/bandung-coffeeshop-admin/models"
 	"github.com/jackc/pgx/v5"
@@ -129,13 +130,13 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 		return nil, err
 	}
 
-	rows, err = r.db.Query(ctx, `SELECT tag_id, visible FROM cafe_tag WHERE cafe_id = $1 ORDER BY tag_id`, p.CafeID)
+	rows, err = r.db.Query(ctx, `SELECT tag_id, visible, updated_at FROM cafe_tag WHERE cafe_id = $1 ORDER BY tag_id`, p.CafeID)
 	if err != nil {
 		return nil, err
 	}
 	p.Tags, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CafeTag, error) {
 		var tg models.CafeTag
-		err := row.Scan(&tg.TagID, &tg.Visible)
+		err := row.Scan(&tg.TagID, &tg.Visible, &tg.UpdatedAt)
 		return tg, err
 	})
 	if err != nil {
@@ -235,6 +236,24 @@ func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) e
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// TouchTag bumps cafe_tag.updated_at to now (the public site shows the most
+// recently updated visible tag as the cafe's remark) without touching
+// cafe.updated_at. locationID is the cafe's location slug. Returns the new
+// timestamp, or ErrNotFound if the tag is not saved for that cafe.
+func (r *CafeRepository) TouchTag(ctx context.Context, locationID string, tagID int) (time.Time, error) {
+	var at time.Time
+	err := r.db.QueryRow(ctx, `
+		UPDATE cafe_tag ct SET updated_at = NOW()
+		FROM cafe c
+		WHERE c.id = ct.cafe_id AND c.location_id = $1 AND ct.tag_id = $2
+		RETURNING ct.updated_at
+	`, locationID, tagID).Scan(&at)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, ErrNotFound
+	}
+	return at, err
 }
 
 // SoftDelete marks the cafe's location as deleted.

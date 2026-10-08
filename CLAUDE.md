@@ -98,7 +98,11 @@ covered by the gated `repository` integration tests.
 
 - `/` dashboard (pending counts, failing sources, last run per source)
 - `/cafes`, `/cafes/new`, `/cafes/{location_id}` — full cafe form (basics, details incl. weather / phone /
-  menu / status, Leaflet coordinates, pricing, review, ratings, tags, ordered images); soft delete
+  menu / status, Leaflet coordinates, pricing, review, ratings, tags, ordered images); soft delete. The list
+  sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`).
+  Each saved + visible tag row has a "Touch" button (`POST /cafes/{id}/tags/{tagId}/touch`, HTMX, swaps the row's
+  touch fragment) that sets only `cafe_tag.updated_at = now()` (not `cafe.updated_at`) so that tag becomes the
+  public "remark"; the newest visible tag is marked "current remark"
 - `/cafes/{id}/feed` — `cafe_feed` list, create, edit, hide/unhide, expiry
 - `/locations`, `/locations/new`, `/locations/{id}` — poi / area / district with GeoJSON; a map is bound two-way to the
   GeoJSON textarea: poi = point picker, area / district = leaflet-geoman polygon editor (draw / edit / drag / cut /

@@ -34,5 +34,5 @@ func (h *PostCafeTagNewHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		h.Render(w, r, http.StatusOK, templates.NewTagError(msg))
 		return
 	}
-	h.Render(w, r, http.StatusOK, templates.CafeTagRow(t, true, true))
+	h.Render(w, r, http.StatusOK, templates.CafeTagRow(t, true, true, "", nil, false))
 }
