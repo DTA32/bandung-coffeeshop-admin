@@ -28,7 +28,7 @@ func (r *CafeRepository) List(ctx context.Context, q string) ([]models.CafeListI
 		JOIN cafe c ON c.location_id = l.id
 		WHERE l.type = 'cafe'
 		  AND ($1 = '' OR l.name ILIKE '%' || $1 || '%' OR l.id ILIKE '%' || $1 || '%')
-		ORDER BY l.name ASC, l.id ASC
+		ORDER BY GREATEST(l.updated_at, c.updated_at) ASC, l.name ASC, l.id ASC
 	`, q)
 	if err != nil {
 		return nil, err
