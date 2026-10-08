@@ -18,8 +18,8 @@ func NewCafeController(repo *repository.CafeRepository, ratingTypes *repository.
 	return &CafeController{repo: repo, ratingTypes: ratingTypes}
 }
 
-func (c *CafeController) List(ctx context.Context, q string) ([]models.CafeListItem, error) {
-	return c.repo.List(ctx, q)
+func (c *CafeController) List(ctx context.Context, q, sort string) ([]models.CafeListItem, error) {
+	return c.repo.List(ctx, q, sort)
 }
 
 func (c *CafeController) Get(ctx context.Context, id string) (*models.Cafe, error) {

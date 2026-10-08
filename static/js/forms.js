@@ -212,6 +212,12 @@
     run()
   }
 
+  // Selects with data-autosubmit submit their GET form on change (cafe list sort).
+  document.addEventListener('change', function (e) {
+    var sel = e.target.closest && e.target.closest('[data-autosubmit]')
+    if (sel && sel.form) sel.form.requestSubmit()
+  })
+
   // Confirm prompts for destructive buttons.
   document.addEventListener(
     'click',

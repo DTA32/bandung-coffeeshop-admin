@@ -20,7 +20,18 @@ func NewCafeRepository(db *pgxpool.Pool) *CafeRepository {
 	return &CafeRepository{db: db}
 }
 
-func (r *CafeRepository) List(ctx context.Context, q string) ([]models.CafeListItem, error) {
+// cafeListOrder maps a sort key to a whitelisted ORDER BY clause; unknown keys
+// fall back to the default (least recently updated first).
+var cafeListOrder = map[string]string{
+	models.CafeSortUpdatedAsc:  "GREATEST(l.updated_at, c.updated_at) ASC, l.name ASC, l.id ASC",
+	models.CafeSortUpdatedDesc: "GREATEST(l.updated_at, c.updated_at) DESC, l.name ASC, l.id ASC",
+}
+
+func (r *CafeRepository) List(ctx context.Context, q, sort string) ([]models.CafeListItem, error) {
+	order, ok := cafeListOrder[sort]
+	if !ok {
+		order = cafeListOrder[models.CafeSortUpdatedAsc]
+	}
 	rows, err := r.db.Query(ctx, `
 		SELECT l.id, c.id, l.name, l.status::text, c.is_featured, c.instagram,
 		       TO_CHAR(GREATEST(l.updated_at, c.updated_at), 'YYYY-MM-DD')
@@ -28,8 +39,7 @@ func (r *CafeRepository) List(ctx context.Context, q string) ([]models.CafeListI
 		JOIN cafe c ON c.location_id = l.id
 		WHERE l.type = 'cafe'
 		  AND ($1 = '' OR l.name ILIKE '%' || $1 || '%' OR l.id ILIKE '%' || $1 || '%')
-		ORDER BY GREATEST(l.updated_at, c.updated_at) ASC, l.name ASC, l.id ASC
-	`, q)
+		ORDER BY `+order, q)
 	if err != nil {
 		return nil, err
 	}

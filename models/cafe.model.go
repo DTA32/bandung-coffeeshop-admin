@@ -90,3 +90,17 @@ type CafeFormOptions struct {
 // Weathers mirrors constants.Weather* in bandung-coffeeshop-be and the
 // cafe_weather_valid CHECK in 005_cafe_weather.sql.
 var Weathers = []string{"clear", "cloudy", "rain"}
+
+// Cafe list sort keys (the ?sort= query param of GET /cafes).
+const (
+	CafeSortUpdatedAsc  = "updated_asc"
+	CafeSortUpdatedDesc = "updated_desc"
+)
+
+// NormalizeCafeSort returns a known sort key, defaulting to least recently updated.
+func NormalizeCafeSort(s string) string {
+	if s == CafeSortUpdatedDesc {
+		return CafeSortUpdatedDesc
+	}
+	return CafeSortUpdatedAsc
+}

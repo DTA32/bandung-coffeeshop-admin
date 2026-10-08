@@ -4,7 +4,7 @@ import "github.com/dta32/bandung-coffeeshop-admin/models"
 
 // CafeListPage ports admin.cafes.index.tsx. The search box filters the
 // rendered rows client-side (static/js/forms.js), like the console.
-templ CafeListPage(items []models.CafeListItem, q, ok string) {
+templ CafeListPage(items []models.CafeListItem, q, sort, ok string) {
 	@Layout("Cafes", NavCafes) {
 		@Page(pageCls) {
 			@BackLink("/", "Admin home")
@@ -16,14 +16,27 @@ templ CafeListPage(items []models.CafeListItem, q, ok string) {
 				</a>
 			</div>
 			@Notice(ok, "")
-			<input
-				class={ searchCls }
-				type="search"
-				placeholder="Search cafe name or id..."
-				value={ q }
-				aria-label="Search cafes"
-				data-list-filter="#cafe-list"
-			/>
+			<form method="get" action="/cafes" class="flex flex-wrap items-end gap-3">
+				<div class="flex min-w-48 flex-1 flex-col gap-1">
+					<label class={ labelCls } for="cafe-search">Search</label>
+					<input
+						id="cafe-search"
+						class={ searchCls }
+						type="search"
+						name="q"
+						placeholder="Search cafe name or id..."
+						value={ q }
+						data-list-filter="#cafe-list"
+					/>
+				</div>
+				<div class="flex flex-col gap-1">
+					<label class={ labelCls } for="cafe-sort">Sort</label>
+					<select id="cafe-sort" class={ inputCls } name="sort" data-autosubmit>
+						<option value="updated_asc" selected?={ sort != "updated_desc" }>Least recently updated</option>
+						<option value="updated_desc" selected?={ sort == "updated_desc" }>Most recently updated</option>
+					</select>
+				</div>
+			</form>
 			<div class="flex flex-col gap-2" id="cafe-list">
 				<p class="text-sm text-bark" data-list-empty hidden?={ len(items) > 0 }>No cafes found.</p>
 				for _, c := range items {
