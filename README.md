@@ -8,8 +8,8 @@ owned by `bandung-coffeeshop-be/migrations`**, not this repo.
 ## Stack
 
 GOTTH: Go 1.26 stdlib `net/http` (1.22+ pattern routing), [templ](https://templ.guide), Tailwind v4
-(standalone CLI, no Node), HTMX 2. Database access is pgx/v5 with raw SQL. HTMX, Leaflet and fonts are vendored
-in `static/vendor/`.
+(standalone CLI, no Node), HTMX 2. Database access is pgx/v5 with raw SQL. HTMX, Leaflet, leaflet-geoman (polygon
+editor, 2.20.2, MIT) and fonts are vendored in `static/vendor/`.
 
 ## Layout
 

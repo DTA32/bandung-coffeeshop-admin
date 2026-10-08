@@ -38,7 +38,8 @@ Copy `.env.example` → `.env`. Config: `APP_PORT`, `DB_HOST/PORT/USER/PASSWORD/
 
 After editing a `.templ` file run `make generate`; after adding Tailwind classes run `make css`.
 Pin versions: templ `v0.3.1020` (also in `go.mod`, Dockerfile, Woodpecker), Tailwind `v4.3.3`
-(Makefile + checksum in Dockerfile), HTMX 2.0.11 and Leaflet 1.9.4 vendored in `static/vendor/`.
+(Makefile + checksum in Dockerfile), HTMX 2.0.11, Leaflet 1.9.4 and
+`@geoman-io/leaflet-geoman-free` 2.20.2 (MIT, `static/vendor/leaflet-geoman/`, no CDN at runtime) vendored in `static/vendor/`.
 
 ## Architecture
 
@@ -70,7 +71,7 @@ middleware/      SameOrigin (CSRF guard), Logging, Recover, SecurityHeaders, Cac
 templates/       templ components, one file per entity (cafes, locations, tags, rating_types, rating_categories,
                  feeds, changes, posts, sources, dashboard) + layout/components/icons .templ, helpers.go, styles.go
 utils/           request helpers (PathInt, QueryInt, IsHTMX, RedirectOK) and small value helpers
-static/          embedded (embed.go): css/, js/forms.js (Leaflet picker, image list, toggles), vendor/ (htmx, leaflet, fonts)
+static/          embedded (embed.go): css/, js/forms.js (Leaflet picker + geoman polygon editor, image list, toggles), vendor/ (htmx, leaflet, fonts)
 ```
 
 Entities: `cafe`, `location` (non-cafe poi/area/district + `location_image`), `tag`, `rating_type`
@@ -99,7 +100,9 @@ covered by the gated `repository` integration tests.
 - `/cafes`, `/cafes/new`, `/cafes/{location_id}` — full cafe form (basics, details incl. weather / phone /
   menu / status, Leaflet coordinates, pricing, review, ratings, tags, ordered images); soft delete
 - `/cafes/{id}/feed` — `cafe_feed` list, create, edit, hide/unhide, expiry
-- `/locations` — poi / area / district with GeoJSON
+- `/locations`, `/locations/new`, `/locations/{id}` — poi / area / district with GeoJSON; a map is bound two-way to the
+  GeoJSON textarea: poi = point picker, area / district = leaflet-geoman polygon editor (draw / edit / drag / cut /
+  remove; Polygon or MultiPolygon; blur the textarea to redraw, invalid JSON shows an inline error)
 - `/tags`, `/rating-types` (`rating_type_label` dimensions), `/rating-categories` — inline HTMX CRUD
 - `/changes` — pending field proposals grouped by cafe: approve / edit & approve / reject;
   informational fields (`temp_closed`, `menu_content`, `ig_bio`) are dismiss-only; "approve all"

@@ -102,9 +102,20 @@ templ LocationFormPage(l *models.Location, isNew bool, errMsg, ok string) {
 					<div data-poi-only hidden?={ l.Type != "poi" }>
 						@CoordinatePicker(nil, "#location-geojson")
 					</div>
-					<p class="m-0 text-xs text-bark" data-polygon-only hidden?={ l.Type == "poi" }>
-						Areas and districts are polygons — paste a GeoJSON geometry below.
-					</p>
+					<div class="flex flex-col gap-3" data-polygon-only hidden?={ l.Type == "poi" }>
+						<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css"/>
+						<link rel="stylesheet" href="/static/vendor/leaflet-geoman/leaflet-geoman.css"/>
+						<div
+							class="h-96 w-full overflow-hidden rounded-xl border border-grove-light"
+							data-polygon-editor
+							data-geojson-target="#location-geojson"
+						></div>
+						<p class="m-0 text-xs text-bark">
+							Draw a polygon, then edit vertices, drag, cut or remove it with the toolbar.
+							Several polygons are saved as a MultiPolygon. You can also edit the GeoJSON below.
+						</p>
+						<p class={ rowErrorCls } role="alert" data-geojson-error hidden></p>
+					</div>
 					@Field("GeoJSON geometry") {
 						<textarea
 							id="location-geojson"
@@ -146,6 +157,7 @@ templ LocationFormPage(l *models.Location, isNew bool, errMsg, ok string) {
 			</form>
 		}
 		<script src="/static/vendor/leaflet/leaflet.js" defer></script>
+		<script src="/static/vendor/leaflet-geoman/leaflet-geoman.min.js" defer></script>
 	}
 }
 

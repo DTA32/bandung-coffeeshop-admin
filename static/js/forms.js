@@ -1,5 +1,5 @@
 // Small progressive enhancements that replace the console's React state:
-// list search, the Leaflet coordinate picker, the orderable image list,
+// list search, the Leaflet coordinate picker and geoman polygon editor, the orderable image list,
 // rating / tag toggles, confirm prompts and the "Saving..." button label.
 ;(function () {
   'use strict'
@@ -33,6 +33,17 @@
     return null
   }
 
+  function osmTiles() {
+    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      // OSM blocks tile requests without a Referer; the page sends
+      // Referrer-Policy: same-origin, so override it for tiles.
+      referrerPolicy: 'no-referrer-when-downgrade'
+    })
+  }
+
   function initCoordinatePicker(el) {
     if (typeof L === 'undefined') return
     var latInput = document.getElementById('coord-lat')
@@ -52,14 +63,7 @@
     var has = !isNaN(lat) && !isNaN(lng)
 
     var map = L.map(el).setView(has ? [lat, lng] : DEFAULT_CENTER, has ? 16 : 13)
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      // OSM blocks tile requests without a Referer; the page sends
-      // Referrer-Policy: same-origin, so override it for tiles.
-      referrerPolicy: 'no-referrer-when-downgrade'
-    }).addTo(map)
+    osmTiles().addTo(map)
 
     var marker = null
 
@@ -120,7 +124,136 @@
     el._leafletMap = map
   }
 
-  // Location form: the map is only for points; polygons are pasted as GeoJSON.
+  // Polygon editor (location form, types area / district): leaflet-geoman edits
+  // the layers and mirrors them into the GeoJSON textarea; editing the textarea
+  // and blurring it redraws the map.
+  function initPolygonEditor(el) {
+    if (typeof L === 'undefined' || !L.PM) return
+    var geojson = document.querySelector(el.dataset.geojsonTarget)
+    var errBox = el.parentNode.querySelector('[data-geojson-error]')
+    if (!geojson) return
+
+    var map = L.map(el).setView(DEFAULT_CENTER, 13)
+    osmTiles().addTo(map)
+    var group = L.featureGroup().addTo(map)
+
+    map.pm.addControls({
+      position: 'topleft',
+      drawMarker: false,
+      drawCircleMarker: false,
+      drawPolyline: false,
+      drawRectangle: false,
+      drawCircle: false,
+      drawText: false,
+      drawPolygon: true,
+      editMode: true,
+      dragMode: true,
+      cutPolygon: true,
+      removalMode: true,
+      rotateMode: false
+    })
+    map.pm.setGlobalOptions({ allowSelfIntersection: false })
+
+    function setError(msg) {
+      if (!errBox) return
+      errBox.textContent = msg || ''
+      errBox.hidden = !msg
+    }
+
+    function liveLayers() {
+      return group.getLayers().filter(function (l) {
+        return map.hasLayer(l)
+      })
+    }
+
+    // Textarea <- map
+    function write() {
+      var polys = []
+      liveLayers().forEach(function (l) {
+        var g = l.toGeoJSON(7).geometry
+        if (g.type === 'Polygon') polys.push(g.coordinates)
+        else if (g.type === 'MultiPolygon') g.coordinates.forEach(function (c) { polys.push(c) })
+      })
+      if (polys.length === 0) geojson.value = ''
+      else if (polys.length === 1) geojson.value = JSON.stringify({ type: 'Polygon', coordinates: polys[0] })
+      else geojson.value = JSON.stringify({ type: 'MultiPolygon', coordinates: polys })
+      setError('')
+    }
+
+    function track(layer) {
+      group.addLayer(layer)
+      layer.on('pm:edit pm:dragend pm:markerdragend pm:vertexadded pm:vertexremoved pm:cut', write)
+    }
+
+    function fit() {
+      map.invalidateSize()
+      if (liveLayers().length) map.fitBounds(group.getBounds(), { padding: [20, 20], maxZoom: 17 })
+    }
+
+    // Map <- textarea. Returns false (map untouched) when the text is not a
+    // Polygon / MultiPolygon.
+    function load(quiet) {
+      var text = geojson.value.trim()
+      var polys = []
+      if (text) {
+        var g
+        try {
+          g = JSON.parse(text)
+        } catch (e) {
+          if (!quiet) setError('Invalid JSON: ' + e.message)
+          return false
+        }
+        if (g && g.type === 'Polygon' && Array.isArray(g.coordinates)) polys = [g.coordinates]
+        else if (g && g.type === 'MultiPolygon' && Array.isArray(g.coordinates)) polys = g.coordinates
+        else {
+          if (!quiet) setError('Expected a Polygon or MultiPolygon geometry.')
+          return false
+        }
+        try {
+          polys = polys.map(function (c) {
+            return L.polygon(L.GeoJSON.coordsToLatLngs(c, 1))
+          })
+        } catch (e) {
+          if (!quiet) setError('Invalid coordinates.')
+          return false
+        }
+      }
+      setError('')
+      group.clearLayers()
+      polys.forEach(track)
+      if (!el.closest('[hidden]')) fit()
+      return true
+    }
+
+    map.on('pm:create', function (e) {
+      track(e.layer)
+      write()
+    })
+    map.on('pm:remove', function (e) {
+      group.removeLayer(e.layer)
+      write()
+    })
+    map.on('pm:cut', function (e) {
+      if (!group.hasLayer(e.layer)) track(e.layer)
+      if (e.originalLayer && e.originalLayer !== e.layer) group.removeLayer(e.originalLayer)
+      write()
+    })
+
+    geojson.addEventListener('change', function () {
+      load(false)
+    })
+
+    el._polygonEditor = {
+      // Called when the editor becomes visible or the type changes.
+      show: function () {
+        load(true)
+        fit()
+      }
+    }
+    load(true)
+  }
+
+  // Location form: poi uses the point picker, area / district the polygon editor.
   function initLocationType(select) {
     var form = select.form
     function sync() {
@@ -134,6 +267,10 @@
       })
       form.querySelectorAll('[data-polygon-only]').forEach(function (n) {
         n.hidden = poi
+        if (!poi) {
+          var m = n.querySelector('[data-polygon-editor]')
+          if (m && m._polygonEditor) m._polygonEditor.show()
+        }
       })
     }
     select.addEventListener('change', sync)
@@ -254,6 +391,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-coordinate-picker]').forEach(initCoordinatePicker)
+    document.querySelectorAll('[data-polygon-editor]').forEach(initPolygonEditor)
     document.querySelectorAll('[data-location-type]').forEach(initLocationType)
     document.querySelectorAll('[data-images-editor]').forEach(initImagesEditor)
     document.querySelectorAll('[data-rating]').forEach(initRating)
