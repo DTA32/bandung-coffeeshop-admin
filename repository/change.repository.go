@@ -66,11 +66,12 @@ func (r *ChangeRepository) ListPending(ctx context.Context, cafeID int) ([]model
 	return pgx.CollectRows(rows, scanProposal)
 }
 
-// ListPendingPage returns the pending non-post proposals of one page (1-based)
-// of *cafes* (PageSize cafes ordered by name, id), so a cafe's group is never
-// split across pages. hasMore reports whether another page of cafes exists.
-func (r *ChangeRepository) ListPendingPage(ctx context.Context, cafeID, page int) (items []models.Proposal, hasMore bool, err error) {
-	limit, offset := pageWindow(page)
+// ListPendingPage returns the pending non-post proposals of PageSize *cafes*
+// (ordered by name, id) after the cafe afterCafeID (0 = from the start), so a
+// cafe's group is never split across pages. It pages by cursor, not offset:
+// approving rows already on screen removes cafes from the queue and would make
+// an offset skip unseen ones. hasMore reports whether more cafes follow.
+func (r *ChangeRepository) ListPendingPage(ctx context.Context, cafeID, afterCafeID int) (items []models.Proposal, hasMore bool, err error) {
 	idRows, err := r.db.Query(ctx, `
 		SELECT c.id
 		FROM cafe c
@@ -78,9 +79,11 @@ func (r *ChangeRepository) ListPendingPage(ctx context.Context, cafeID, page int
 		WHERE ($1 = 0 OR c.id = $1)
 		  AND EXISTS (SELECT 1 FROM change_proposal p
 		              WHERE p.cafe_id = c.id AND p.status = 'pending' AND p.field <> 'ig_post')
+		  AND ($3 = 0 OR (l.name, c.id) > (SELECT l2.name, c2.id FROM cafe c2
+		                                   JOIN location l2 ON l2.id = c2.location_id WHERE c2.id = $3))
 		ORDER BY l.name, c.id
-		LIMIT $2 OFFSET $3
-	`, cafeID, limit, offset)
+		LIMIT $2
+	`, cafeID, PageSize+1, afterCafeID)
 	if err != nil {
 		return nil, false, err
 	}

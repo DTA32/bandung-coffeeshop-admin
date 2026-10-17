@@ -24,8 +24,9 @@ func (c *ChangeController) Get(ctx context.Context, id int64) (*models.Proposal,
 
 // List returns one page of pending field proposals grouped by cafe (a page is
 // PageSize cafes; groups are never split).
-func (c *ChangeController) List(ctx context.Context, cafeID, page int) (models.Page[models.CafeProposals], error) {
-	items, more, err := c.repo.ListPendingPage(ctx, cafeID, page)
+// List returns the groups of PageSize cafes after afterCafeID (0 = first page).
+func (c *ChangeController) List(ctx context.Context, cafeID, afterCafeID int) (models.Page[models.CafeProposals], error) {
+	items, more, err := c.repo.ListPendingPage(ctx, cafeID, afterCafeID)
 	if err != nil {
 		return models.Page[models.CafeProposals]{}, err
 	}

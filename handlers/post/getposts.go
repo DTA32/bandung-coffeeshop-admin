@@ -17,7 +17,8 @@ func NewGetPostsHandler(h *handlers.Handler) *GetPostsHandler { return &GetPosts
 func (h *GetPostsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lp := utils.ParseListParams(r, "")
 	cafeID := utils.QueryInt(r, "cafe")
-	pg, err := h.Ctl.Post.List(r.Context(), cafeID, lp.Page)
+	afterID, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
+	pg, err := h.Ctl.Post.List(r.Context(), cafeID, afterID)
 	if err != nil {
 		h.ServerError(w, r, err)
 		return
@@ -26,7 +27,11 @@ func (h *GetPostsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if cafeID != 0 {
 		cafeParam = strconv.Itoa(cafeID)
 	}
-	next := lp.Next("/posts", url.Values{"cafe": {cafeParam}}, pg.HasMore)
+	after := ""
+	if n := len(pg.Items); n > 0 {
+		after = strconv.FormatInt(pg.Items[n-1].ID, 10)
+	}
+	next := lp.Next("/posts", url.Values{"cafe": {cafeParam}, "after": {after}}, pg.HasMore)
 	if lp.Fragment {
 		h.Render(w, r, http.StatusOK, templates.PostCards(pg.Items, next))
 		return

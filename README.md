@@ -42,7 +42,7 @@ static/          embedded CSS, JS, vendored libs
   "remark" is the most recently updated visible tag) without saving the form or touching `cafe.updated_at`.
 - Cafe list: sort by least / most recently updated (`?sort=updated_asc|updated_desc`).
 - Lists load 50 rows at a time by infinite scroll (HTMX `revealed` sentinel; `?page=N` on the same URL, filters
-  carried along). Cafe and location search is server-side typeahead (`?q=`, case-insensitive match on name / id).
+  carried along; the `/changes` and `/posts` queues page by an `after=` cursor so approvals don't skip rows). Cafe and location search is server-side typeahead (`?q=`, case-insensitive match on name / id).
   Shared parsing lives in `utils/pagination.go`, SQL paging helpers in `repository/paging.go`.
 - Changes: tick several proposals (or "select all loaded") and approve / reject them in one go from the sticky
   action bar; informational fields are skipped on approve, failures stay in the list with their reason.

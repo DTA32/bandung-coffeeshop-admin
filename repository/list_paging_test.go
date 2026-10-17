@@ -46,12 +46,16 @@ func TestPendingPagesGroupWholeCafes(t *testing.T) {
 	if len(items) != 2 || more {
 		t.Fatalf("items=%d more=%v", len(items), more)
 	}
-	items, more, err = repo.Change.ListPendingPage(ctx, cafeID, 2)
+	// cursor: nothing after the last cafe shown
+	items, more, err = repo.Change.ListPendingPage(ctx, cafeID, cafeID)
 	if err != nil || len(items) != 0 || more {
-		t.Fatalf("page 2: %d %v %v", len(items), more, err)
+		t.Fatalf("after last cafe: %d %v %v", len(items), more, err)
 	}
-	if _, err := repo.Post.ListPendingPage(ctx, cafeID, 1); err != nil {
+	if _, err := repo.Post.ListPendingPage(ctx, cafeID, 0); err != nil {
 		t.Fatal(err)
+	}
+	if pg, err := repo.Post.ListPendingPage(ctx, cafeID, 1<<40); err != nil || len(pg.Items) != 0 {
+		t.Fatalf("after unknown id: %d %v", len(pg.Items), err)
 	}
 }
 

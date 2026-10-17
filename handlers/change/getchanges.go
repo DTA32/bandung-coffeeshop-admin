@@ -17,7 +17,7 @@ func NewGetChangesHandler(h *handlers.Handler) *GetChangesHandler { return &GetC
 func (h *GetChangesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lp := utils.ParseListParams(r, "")
 	cafeID := utils.QueryInt(r, "cafe")
-	pg, err := h.Ctl.Change.List(r.Context(), cafeID, lp.Page)
+	pg, err := h.Ctl.Change.List(r.Context(), cafeID, utils.QueryInt(r, "after"))
 	if err != nil {
 		h.ServerError(w, r, err)
 		return
@@ -26,7 +26,11 @@ func (h *GetChangesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if cafeID != 0 {
 		cafeParam = strconv.Itoa(cafeID)
 	}
-	next := lp.Next("/changes", url.Values{"cafe": {cafeParam}}, pg.HasMore)
+	after := ""
+	if n := len(pg.Items); n > 0 {
+		after = strconv.Itoa(pg.Items[n-1].CafeID)
+	}
+	next := lp.Next("/changes", url.Values{"cafe": {cafeParam}, "after": {after}}, pg.HasMore)
 	if lp.Fragment {
 		h.Render(w, r, http.StatusOK, templates.ChangeGroups(pg.Items, next))
 		return

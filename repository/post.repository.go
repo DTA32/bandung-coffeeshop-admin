@@ -20,8 +20,10 @@ func NewPostRepository(db *pgxpool.Pool) *PostRepository {
 }
 
 // ListPendingPage returns one page (1-based) of pending post proposals.
-func (r *PostRepository) ListPendingPage(ctx context.Context, cafeID, page int) (models.Page[models.Proposal], error) {
-	limit, offset := pageWindow(page)
+// ListPendingPage returns PageSize pending posts, newest first, after the
+// proposal afterID (0 = from the start). Cursor paging: posts turned into feed
+// entries or ignored leave the queue, which would make an offset skip some.
+func (r *PostRepository) ListPendingPage(ctx context.Context, cafeID int, afterID int64) (models.Page[models.Proposal], error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT `+proposalColumns+`
 		FROM change_proposal p
@@ -29,9 +31,11 @@ func (r *PostRepository) ListPendingPage(ctx context.Context, cafeID, page int) 
 		JOIN location l ON l.id = c.location_id
 		WHERE p.status = 'pending' AND p.field = 'ig_post'
 		  AND ($1 = 0 OR p.cafe_id = $1)
-		ORDER BY p.new_value->>'taken_at' DESC NULLS LAST, p.id DESC
-		LIMIT $2 OFFSET $3
-	`, cafeID, limit, offset)
+		  AND ($3 = 0 OR (COALESCE(p.new_value->>'taken_at', ''), p.id) <
+		                 (SELECT COALESCE(a.new_value->>'taken_at', ''), a.id FROM change_proposal a WHERE a.id = $3))
+		ORDER BY COALESCE(p.new_value->>'taken_at', '') DESC, p.id DESC
+		LIMIT $2
+	`, cafeID, PageSize+1, afterID)
 	if err != nil {
 		return models.Page[models.Proposal]{}, err
 	}

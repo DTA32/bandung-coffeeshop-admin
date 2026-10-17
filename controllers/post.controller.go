@@ -31,9 +31,9 @@ func DecodePost(p models.Proposal) (models.Post, error) {
 	return models.Post{Proposal: p, Value: v}, nil
 }
 
-// List returns one page (1-based) of pending posts, decoded.
-func (c *PostController) List(ctx context.Context, cafeID, page int) (models.Page[models.Post], error) {
-	pg, err := c.repo.ListPendingPage(ctx, cafeID, page)
+// List returns the pending posts after the proposal afterID (0 = first page), decoded.
+func (c *PostController) List(ctx context.Context, cafeID int, afterID int64) (models.Page[models.Post], error) {
+	pg, err := c.repo.ListPendingPage(ctx, cafeID, afterID)
 	if err != nil {
 		return models.Page[models.Post]{}, err
 	}

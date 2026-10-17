@@ -129,8 +129,11 @@ component (`CafeListRows`, `TargetRows`, ...) used by both the full page and the
 `@LoadMore(next)` (or `LoadMoreRow` in tables): a sentinel with `hx-trigger="revealed" hx-swap="outerHTML"`,
 absent on the last page. Cafes and locations also search server-side: `?q=` is matched with `ILIKE` on
 name / id, `%`, `_` and `\` escaped by `repository.EscapeLike`; the input is a typeahead (`hx-get`,
-`input changed delay:300ms, search`, `hx-push-url`, `hx-include` for sort/type). `/changes` pages by cafe group
-(50 cafes per page). Lists needing everything keep an unpaged method (`CafeRepository.Options`,
+`input changed delay:300ms, search`, `hx-push-url`, `hx-include` for sort/type). The approval queues
+page by cursor instead of offset, because approving rows already on screen shrinks the queue and an offset
+would then skip unseen rows: `/changes` takes `after=<last cafe id>` (50 cafe groups per page, ordered by
+location name, id) and `/posts` takes `after=<last proposal id>` (ordered by taken_at desc, id desc); `page`
+still increments so fragment detection works. Lists needing everything keep an unpaged method (`CafeRepository.Options`,
 `TagRepository.List`, `RatingTypeRepository.List`, `RatingCategoryRepository.List`).
 
 `/changes` also has multi-select batch actions (`POST /changes/batch`, `action=approve|reject`, repeated `id=`,
