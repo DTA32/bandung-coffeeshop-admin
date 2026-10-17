@@ -99,7 +99,8 @@ covered by the gated `repository` integration tests.
 - `/` dashboard (pending counts, failing sources, last run per source)
 - `/cafes`, `/cafes/new`, `/cafes/{location_id}` — full cafe form (basics, details incl. weather / phone /
   menu / status, Leaflet coordinates, pricing, review, ratings, tags, ordered images); soft delete. The list
-  sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`).
+  sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`) and
+  searches server-side (`?q=`, typeahead).
   Each saved + visible tag row has a "Touch" button (`POST /cafes/{id}/tags/{tagId}/touch`, HTMX, swaps the row's
   touch fragment) that sets only `cafe_tag.updated_at = now()` (not `cafe.updated_at`) so that tag becomes the
   public "remark"; the newest visible tag is marked "current remark"
@@ -108,11 +109,35 @@ covered by the gated `repository` integration tests.
   GeoJSON textarea: poi = point picker, area / district = leaflet-geoman polygon editor (draw / edit / drag / cut /
   remove; Polygon or MultiPolygon; blur the textarea to redraw, invalid JSON shows an inline error)
 - `/tags`, `/rating-types` (`rating_type_label` dimensions), `/rating-categories` — inline HTMX CRUD
-- `/changes` — pending field proposals grouped by cafe: approve / edit & approve / reject;
+- `/changes` — pending field proposals grouped by cafe: approve / edit & approve / reject, or select several
+  rows and batch approve / reject;
   informational fields (`temp_closed`, `menu_content`, `ig_bio`) are dismiss-only; "approve all"
 - `/posts` — pending `ig_post` proposals: "Create feed for this cafe" (prefilled form) or "Ignore"
 - `/sources` — `source_target` per cafe × source (enable, external id override/clear, reset failures),
   recent `scrape_run`s, `/snapshots/{id}` raw/parsed view
+
+### List pages: pagination and typeahead
+
+Every list page loads 50 rows at a time (`repository.PageSize`) by infinite scroll. Repositories fetch
+`LIMIT PageSize+1 OFFSET (page-1)*PageSize` through `pageWindow` / `toPage` (`repository/paging.go`) and return
+`models.Page[T]{Items, HasMore}`; every ORDER BY ends in a unique tiebreaker (id). Handlers call
+`utils.ParseListParams(r, listID)` (`page`, `q`, `Fragment`) and `lp.Next(path, params, hasMore)` to build the
+next-page URL, which must carry every active filter (q, sort, type, cafe, source, failing...). A request is a
+*fragment* request (GET + `HX-Request`, not an htmx history restore, and `page >= 2` or `HX-Target` == the list
+container id) and then renders only the rows component; otherwise the full page. Each list has a templ rows
+component (`CafeListRows`, `TargetRows`, ...) used by both the full page and the fragment, ending in
+`@LoadMore(next)` (or `LoadMoreRow` in tables): a sentinel with `hx-trigger="revealed" hx-swap="outerHTML"`,
+absent on the last page. Cafes and locations also search server-side: `?q=` is matched with `ILIKE` on
+name / id, `%`, `_` and `\` escaped by `repository.EscapeLike`; the input is a typeahead (`hx-get`,
+`input changed delay:300ms, search`, `hx-push-url`, `hx-include` for sort/type). `/changes` pages by cafe group
+(50 cafes per page). Lists needing everything keep an unpaged method (`CafeRepository.Options`,
+`TagRepository.List`, `RatingTypeRepository.List`, `RatingCategoryRepository.List`).
+
+`/changes` also has multi-select batch actions (`POST /changes/batch`, `action=approve|reject`, repeated `id=`,
+max `controllers.MaxBatch` = 200): `ChangeController.ApplyBatch` runs each id through the single-row
+Get/Approve/Reject path, skips informational fields on approve, never aborts on one failure, and the HTMX
+response removes processed rows and fills `#batch-flash` via out-of-band swaps. Checkbox / action-bar logic is
+delegated JS in `static/js/forms.js`.
 
 ### UI
 
@@ -122,7 +147,7 @@ same markup, Tailwind classes, labels and section order. The shared class string
 `templates/styles.go` (`cardCls`, `labelCls`, `inputCls`, button classes) — reuse them instead of adding
 component CSS. Icons are inline lucide SVGs (`templates/icons.templ`). Theme tokens are copied verbatim
 from `bandung-coffeeshop-fe/src/styles.css`; the font is the vendored Plus Jakarta Sans Variable.
-`forms.js` is loaded once by `Layout` and replaces the console's React state (list search, rating /
+`forms.js` is loaded once by `Layout` and replaces the console's React state (rating /
 tag toggles, `data-confirm`, "Saving..." labels). Saving a cafe/location returns to its list.
 
 ### Proposal rules (keep in sync with the scraper)
