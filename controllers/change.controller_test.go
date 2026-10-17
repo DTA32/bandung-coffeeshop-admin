@@ -39,6 +39,8 @@ func TestFieldUpdateFor(t *testing.T) {
 		edit *Edit
 	}{
 		{models.Proposal{Field: models.FieldMenu, NewValue: json.RawMessage(`"ftp://x"`)}, nil},
+		{models.Proposal{Field: models.FieldMenu, NewValue: json.RawMessage(`"#image-1"`)}, nil},
+		{models.Proposal{Field: models.FieldMenu}, &Edit{Value: "#image-2"}},
 		{models.Proposal{Field: models.FieldStatus, NewValue: json.RawMessage(`"deleted"`)}, nil},
 		{models.Proposal{Field: models.FieldAddress}, &Edit{Value: "  "}},
 		{models.Proposal{Field: models.FieldIGBio, NewValue: json.RawMessage(`"bio"`)}, nil},

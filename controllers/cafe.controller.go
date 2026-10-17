@@ -96,8 +96,8 @@ func NormalizeCafe(p *models.Cafe) error {
 	}
 	p.Phone = NilIfBlank(p.Phone)
 	p.Menu = NilIfBlank(p.Menu)
-	if p.Menu != nil && !isHTTPURL(*p.Menu) {
-		return invalid("menu must be an http(s) URL")
+	if p.Menu != nil && !isMenuValue(*p.Menu) {
+		return invalid("menu must be an http(s) URL or #image-N (N >= 1)")
 	}
 	p.OpenHour = NilIfBlank(p.OpenHour)
 	p.CloseHour = NilIfBlank(p.CloseHour)

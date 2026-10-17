@@ -41,6 +41,7 @@ func TestNormalizeCafe(t *testing.T) {
 		{"bad hour", func(c *models.Cafe) { c.OpenHour = ptr("24:00") }, "invalid hour"},
 		{"bad weather", func(c *models.Cafe) { c.Weather = []string{"snow"} }, "invalid weather"},
 		{"bad menu", func(c *models.Cafe) { c.Menu = ptr("drive.google.com/x") }, "menu must be"},
+		{"bad menu gallery", func(c *models.Cafe) { c.Menu = ptr("#image-0") }, "menu must be"},
 		{"bad coords", func(c *models.Cafe) { c.Coordinates = &models.Coordinates{Lat: 100} }, "invalid coordinates"},
 		{"bad score", func(c *models.Cafe) { c.Review = &models.Review{OverallScore: ptr(5.5)} }, "between 0 and 5"},
 		{"dup tag", func(c *models.Cafe) { c.Tags = []models.CafeTag{{TagID: 1}, {TagID: 1}} }, "duplicate tag"},

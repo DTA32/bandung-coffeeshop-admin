@@ -63,6 +63,15 @@ func validateHour(h *string) error {
 	return nil
 }
 
+var menuGalleryRe = regexp.MustCompile(`^#image-[1-9][0-9]*$`)
+
+// isMenuValue accepts what cafe.menu may hold when edited by hand: an http(s) URL,
+// or a "#image-N" gallery hash (N >= 1, no leading zeros). Scraped menu proposals
+// stay URL-only (see FieldUpdateFor).
+func isMenuValue(s string) bool {
+	return isHTTPURL(s) || menuGalleryRe.MatchString(s)
+}
+
 func isHTTPURL(s string) bool {
 	return strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://")
 }

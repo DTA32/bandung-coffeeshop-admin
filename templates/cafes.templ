@@ -145,8 +145,9 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 				@Field("Phone") {
 					<input class={ inputCls } name="phone" value={ deref(c.Phone) } placeholder="+6281234567890"/>
 				}
-				@Field("Menu URL") {
-					<input class={ inputCls } type="url" name="menu" value={ deref(c.Menu) } placeholder="https://..."/>
+				@Field("Menu") {
+					<input class={ inputCls } name="menu" value={ deref(c.Menu) } placeholder="https://... or #image-1"/>
+					<p class="m-0 mt-1 text-xs text-bark">URL, or #image-N to open gallery image N (1 = first image)</p>
 				}
 			</div>
 			<label class={ checkRowCls }>
