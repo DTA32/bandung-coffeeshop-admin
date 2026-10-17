@@ -14,7 +14,7 @@ editor, 2.20.2, MIT) and fonts are vendored in `static/vendor/`.
 ## Layout
 
 Organised by entity (`cafe`, `location`, `tag`, `rating_type`, `rating_category`, `feed`, `change`, `post`,
-`source`, `dashboard`) inside each layer; handlers call controllers, controllers call the repository:
+`source`, `user`, `dashboard`) inside each layer; handlers call controllers, controllers call the repository:
 
 ```
 main.go          wiring, graceful shutdown
@@ -23,7 +23,7 @@ routes/          <entity>.route.go: route registration per entity (+ basic.route
 handlers/        shared code only: handler.go (Handler + deps), helpers.go (render/error), forms.go (parse primitives),
                  gethealth.go
 handlers/<entity>/  one package per entity (cafe, location, tag, ratingtype, ratingcategory, feed, change, post,
-                 source, dashboard): one struct per route, one file per route <get|post><entity><action>.go,
+                 source, user, dashboard): one struct per route, one file per route <get|post><entity><action>.go,
                  plus handler.go (shared helpers) and form.go (form parsing)
 controllers/     <entity>.controller.go: business rules, validation, normalisation (no SQL)
 repository/      <entity>.repository.go: all SQL (pgx) and every transaction

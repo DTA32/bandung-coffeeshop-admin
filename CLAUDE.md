@@ -27,7 +27,7 @@ make test         # go test ./... -race -cover
 go vet ./...
 make fmt          # templ fmt + go fmt
 
-# Repository integration tests run only against a migrated database (001–008):
+# Repository integration tests run only against a migrated database (001–009):
 ADMIN_TEST_DSN='postgres://postgres:postgres@localhost:5432/bandung_coffeeshop?sslmode=disable' go test ./repository
 
 docker build -t bandung-coffeeshop-admin .
@@ -52,11 +52,11 @@ main.go          wiring: repository.New(pool) -> controllers.New(repos) -> handl
                  (layout follows Sinanaas/gotth-auction)
 initializers/    LoadEnv/LoadConfig (env config; DSN pins the session timezone to UTC), ConnectDB (pgx pool)
 routes/          <entity>.route.go (cafe, location, tag, rating_type, rating_category, feed, change, post, source,
-                 dashboard) + basic.route.go (health, static) + routes.go (middleware chain)
+                 user, dashboard) + basic.route.go (health, static) + routes.go (middleware chain)
 handlers/        shared code only, package `handlers`: handler.go (Handler{Ctl, Cfg}), helpers.go (Render/ServerError/
                  NotFound/UserError/SavedOr/FriendlyUnique), forms.go (Opt*/Checked/ParseImages/FormErrorf), gethealth.go
 handlers/<entity>/  one package per entity (cafe, location, tag, ratingtype, ratingcategory, feed, change, post, source,
-                 dashboard); each route is one small struct embedding *handlers.Handler, one file per route named
+                 user, dashboard); each route is one small struct embedding *handlers.Handler, one file per route named
                  <get|post><entity><action>.go (cafe/getcafes.go, cafe/postcafeedit.go, change/postchangeapproveall.go,
                  source/getsourcesnapshot.go), plus handler.go (helpers used by several routes of the entity) and
                  form.go (+ form_test.go) for form parsing. Cross-entity helpers are exported (cafe.FromPath,
@@ -69,15 +69,15 @@ repository/      <entity>.repository.go: XxxRepository, all raw pgx SQL; reposit
 models/          <entity>.model.go DTOs shared by all layers
 middleware/      SameOrigin (CSRF guard), Logging, Recover, SecurityHeaders, CacheStatic
 templates/       templ components, one file per entity (cafes, locations, tags, rating_types, rating_categories,
-                 feeds, changes, posts, sources, dashboard) + layout/components/icons .templ, helpers.go, styles.go
+                 feeds, changes, posts, sources, users, dashboard) + layout/components/icons .templ, helpers.go, styles.go
 utils/           request helpers (PathInt, QueryInt, IsHTMX, RedirectOK) and small value helpers
 static/          embedded (embed.go): css/, js/forms.js (Leaflet picker + geoman polygon editor, image list, toggles), vendor/ (htmx, leaflet, fonts)
 ```
 
 Entities: `cafe`, `location` (non-cafe poi/area/district + `location_image`), `tag`, `rating_type`
 (`rating_type_label`), `rating_category`, `feed` (`cafe_feed`), `change` (field `change_proposal`s), `post`
-(`ig_post` proposals), `source` (`source_target` + `scrape_run` + snapshots), `dashboard` (home counts; its
-controller also reads `SourceRepository.LastRuns`). Naming convention everywhere: `<entity>.<layer>.go`
+(`ig_post` proposals), `source` (`source_target` + `scrape_run` + snapshots), `user` (`users`, BE migration 009,
+BCF-25), `dashboard` (home counts incl. active / deleted users; its controller also reads `SourceRepository.LastRuns`). Naming convention everywhere: `<entity>.<layer>.go`
 (`cafe.model.go`, `cafe.repository.go`, `cafe.controller.go`, `cafe.route.go`); templates use the plural
 (`cafes.templ`). `change` and `post` share the `change_proposal` table, so the lock/resolve/get/reject helpers
 are package functions in `repository/change.repository.go`.
@@ -96,7 +96,7 @@ covered by the gated `repository` integration tests.
 
 ### Pages
 
-- `/` dashboard (pending counts, failing sources, last run per source)
+- `/` dashboard (pending counts, failing sources, active / deleted users, last run per source)
 - `/cafes`, `/cafes/new`, `/cafes/{location_id}` — full cafe form (basics, details incl. weather / phone /
   menu / status, Leaflet coordinates, pricing, review, ratings, tags, ordered images); soft delete. The list
   sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`) and
@@ -115,6 +115,11 @@ covered by the gated `repository` integration tests.
 - `/posts` — pending `ig_post` proposals: "Create feed for this cafe" (prefilled form) or "Ignore"
 - `/sources` — `source_target` per cafe × source (enable, external id override/clear, reset failures),
   recent `scrape_run`s, `/snapshots/{id}` raw/parsed view
+- `/users` — public-site accounts (BCF-27): server-side search on name / email (ILIKE, wildcards escaped), status
+  tabs all / active / deleted, newest first, 50 per page; HTMX requests (not history restores) get only the
+  `UserResults` fragment. `POST /users/{id}/delete` / `revive` only set `users.status` (no-op if unchanged) and
+  return the row. The BE checks `users.status` on every request (deleted = logged out at once) and hides a deleted
+  user's reviews at read time, so this app never touches Redis sessions or reviews
 
 ### List pages: pagination and typeahead
 
