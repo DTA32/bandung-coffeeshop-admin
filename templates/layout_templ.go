@@ -19,6 +19,7 @@ const (
 	NavTags      Nav = "tags"
 	NavRatings   Nav = "ratings"
 	NavSources   Nav = "sources"
+	NavUsers     Nav = "users"
 )
 
 type navItem struct {
@@ -35,6 +36,7 @@ var navItems = []navItem{
 	{NavLocations, "Locations", "/locations"},
 	{NavTags, "Tags", "/tags"},
 	{NavRatings, "Ratings", "/rating-categories"},
+	{NavUsers, "Users", "/users"},
 }
 
 // Layout is the document shell. The header copies the public site's Header
@@ -68,7 +70,7 @@ func Layout(title string, active Nav) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 42, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 44, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -91,7 +93,7 @@ func Layout(title string, active Nav) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(it.href))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 57, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 59, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -127,7 +129,7 @@ func Layout(title string, active Nav) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(it.label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 62, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 64, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -265,7 +267,7 @@ func BackLink(href, label string) templ.Component {
 		var templ_7745c5c3_Var14 templ.SafeURL
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(href))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 81, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 83, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -295,7 +297,7 @@ func BackLink(href, label string) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 83, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 85, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -357,7 +359,7 @@ func Notice(ok, errMsg string) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(ok)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 90, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 92, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -424,7 +426,7 @@ func ErrorBox(msg string) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 98, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 100, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -485,7 +487,7 @@ func StatusBadge(status string) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 103, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 105, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -545,7 +547,7 @@ func SourceBadge(source string) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(sourceLabel(source))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 107, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 109, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -609,7 +611,7 @@ func Field(label string) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 112, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 114, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -672,7 +674,7 @@ func NotFound(what string) templ.Component {
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(lower(what))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 121, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 123, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -685,7 +687,7 @@ func NotFound(what string) templ.Component {
 			var templ_7745c5c3_Var40 templ.SafeURL
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(notFoundBack(what)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 122, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 124, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
@@ -698,7 +700,7 @@ func NotFound(what string) templ.Component {
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(notFoundBackLabel(what))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 122, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 124, Col: 128}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
@@ -728,6 +730,8 @@ func notFoundBack(what string) string {
 		return "/posts"
 	case "Snapshot":
 		return "/sources"
+	case "User":
+		return "/users"
 	default:
 		return "/"
 	}
@@ -743,6 +747,8 @@ func notFoundBackLabel(what string) string {
 		return "Back to posts"
 	case "Snapshot":
 		return "Back to sources"
+	case "User":
+		return "Back to users"
 	default:
 		return "Admin home"
 	}

@@ -1,0 +1,200 @@
+package templates
+
+import (
+	"net/url"
+
+	"github.com/dta32/bandung-coffeeshop-admin/models"
+)
+
+// UsersPage lists public-site users with server-side search (name / email),
+// a status tab filter and pagination. Delete / revive only flip users.status:
+// the BE logs a deleted user out on their next request and hides their
+// reviews until they are revived.
+templ UsersPage(p *models.UserPage) {
+	@Layout("Users", NavUsers) {
+		@Page(pageCls) {
+			@BackLink("/", "Admin home")
+			<h1 class={ h1Cls }>Users</h1>
+			<p class={ introCls }>
+				Accounts that signed in on the public site. Deleting a user logs them out
+				immediately and hides their reviews; reviving restores both.
+			</p>
+			<form id="user-filters" method="get" action="/users" role="search">
+				<input
+					id="user-search"
+					class={ searchCls, "w-full" }
+					type="search"
+					name="q"
+					value={ p.Params.Q }
+					placeholder="Search name or email..."
+					aria-label="Search users"
+					autocomplete="off"
+					hx-get="/users"
+					hx-trigger="keyup changed delay:300ms, search"
+					hx-include="#user-status"
+					hx-target="#user-results"
+					hx-swap="outerHTML"
+					hx-push-url="true"
+				/>
+			</form>
+			@UserResults(p)
+		}
+	}
+}
+
+// UserResults is the HTMX-swapped part of /users: status tabs, table and
+// pagination. The hidden status input belongs to the search form so a search
+// keeps the selected tab.
+templ UserResults(p *models.UserPage) {
+	<div id="user-results" class="flex flex-col gap-4">
+		<input type="hidden" id="user-status" name="status" value={ p.Params.Status } form="user-filters"/>
+		<nav class="flex flex-wrap gap-2" aria-label="Filter by status">
+			for _, t := range userTabs {
+				<a
+					href={ templ.URL(usersURL(p.Params.Q, t.status, 1)) }
+					class={ tabCls, templ.KV(tabActiveCls, t.status == p.Params.Status), templ.KV(tabIdleCls, t.status != p.Params.Status) }
+					if t.status == p.Params.Status {
+						aria-current="page"
+					}
+					hx-get={ usersURL(p.Params.Q, t.status, 1) }
+					hx-target="#user-results"
+					hx-swap="outerHTML"
+					hx-push-url="true"
+				>{ t.label }</a>
+			}
+		</nav>
+		<section class={ cardCls }>
+			if len(p.Items) == 0 {
+				<p class="m-0 text-sm text-bark">{ usersEmpty(p.Params) }</p>
+			} else {
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-sm text-forest">
+						<thead>
+							<tr class="border-b border-grove-light text-xs font-semibold text-bark">
+								<th class="py-2 pr-3">Name</th>
+								<th class="py-2 pr-3">Email</th>
+								<th class="py-2 pr-3">Status</th>
+								<th class="py-2 pr-3">Joined</th>
+								<th class="py-2"><span class="sr-only">Actions</span></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, u := range p.Items {
+								@UserRow(u)
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</section>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<span class="text-xs text-bark">{ usersSummary(p) }</span>
+			if p.TotalPages() > 1 {
+				<div class="flex gap-2">
+					@userPageLink(p, p.Params.Page-1, "Previous", p.HasPrev())
+					@userPageLink(p, p.Params.Page+1, "Next", p.HasNext())
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ userPageLink(p *models.UserPage, page int, label string, enabled bool) {
+	if enabled {
+		<a
+			href={ templ.URL(usersURL(p.Params.Q, p.Params.Status, page)) }
+			class={ btnOutlineSmCls }
+			hx-get={ usersURL(p.Params.Q, p.Params.Status, page) }
+			hx-target="#user-results"
+			hx-swap="outerHTML"
+			hx-push-url="true"
+		>{ label }</a>
+	} else {
+		<span class={ btnOutlineSmCls, "pointer-events-none opacity-40" } aria-disabled="true">{ label }</span>
+	}
+}
+
+// UserRow is one user; delete / revive swap it in place (outerHTML).
+templ UserRow(u models.User) {
+	<tr id={ "user-" + itoa(u.ID) } class="border-b border-grove-light/60 align-middle last:border-0">
+		<td class="py-2 pr-3 font-semibold">{ u.Name }</td>
+		<td class="py-2 pr-3 break-all">{ u.Email }</td>
+		<td class="py-2 pr-3">
+			@StatusBadge(u.Status)
+		</td>
+		<td class="py-2 pr-3 whitespace-nowrap">{ fmtTime(u.CreatedAt) }</td>
+		<td class="py-2 text-right">
+			if u.Status == models.UserStatusDeleted {
+				<button
+					type="button"
+					class={ btnOutlineSmCls, "ml-auto" }
+					hx-post={ "/users/" + itoa(u.ID) + "/revive" }
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+					hx-disabled-elt="this"
+				>Revive</button>
+			} else {
+				<button
+					type="button"
+					class={ btnDeleteSmCls, "ml-auto" }
+					hx-post={ "/users/" + itoa(u.ID) + "/delete" }
+					hx-confirm="Delete this user? They'll be logged out and their reviews hidden until revived."
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+					hx-disabled-elt="this"
+				>
+					@Icon("trash-2", 14)
+					Delete
+				</button>
+			}
+		</td>
+	</tr>
+}
+
+const (
+	tabCls       = "rounded-lg px-3 py-1.5 text-sm font-semibold no-underline"
+	tabActiveCls = "bg-forest text-cream"
+	tabIdleCls   = "border border-grove-light text-forest hover:bg-forest-lighter"
+)
+
+var userTabs = []struct{ status, label string }{
+	{models.UserFilterAll, "All"},
+	{models.UserStatusActive, "Active"},
+	{models.UserStatusDeleted, "Deleted"},
+}
+
+// usersURL builds /users?q=&status=&page=, leaving out the defaults.
+func usersURL(q, status string, page int) string {
+	v := url.Values{}
+	if q != "" {
+		v.Set("q", q)
+	}
+	if status != "" && status != models.UserFilterAll {
+		v.Set("status", status)
+	}
+	if page > 1 {
+		v.Set("page", itoa(page))
+	}
+	if len(v) == 0 {
+		return "/users"
+	}
+	return "/users?" + v.Encode()
+}
+
+func usersEmpty(p models.UserListParams) string {
+	if p.Q == "" && p.Status == models.UserFilterAll {
+		return "No users yet."
+	}
+	return "No users found."
+}
+
+func usersSummary(p *models.UserPage) string {
+	noun := " users"
+	if p.Total == 1 {
+		noun = " user"
+	}
+	if p.TotalPages() <= 1 {
+		return itoa(p.Total) + noun
+	}
+	return itoa(p.Total) + noun + " · page " + itoa(p.Params.Page) + " of " + itoa(p.TotalPages())
+}

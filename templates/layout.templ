@@ -11,6 +11,7 @@ const (
 	NavTags      Nav = "tags"
 	NavRatings   Nav = "ratings"
 	NavSources   Nav = "sources"
+	NavUsers     Nav = "users"
 )
 
 type navItem struct {
@@ -27,6 +28,7 @@ var navItems = []navItem{
 	{NavLocations, "Locations", "/locations"},
 	{NavTags, "Tags", "/tags"},
 	{NavRatings, "Ratings", "/rating-categories"},
+	{NavUsers, "Users", "/users"},
 }
 
 // Layout is the document shell. The header copies the public site's Header
@@ -134,6 +136,8 @@ func notFoundBack(what string) string {
 		return "/posts"
 	case "Snapshot":
 		return "/sources"
+	case "User":
+		return "/users"
 	default:
 		return "/"
 	}
@@ -149,6 +153,8 @@ func notFoundBackLabel(what string) string {
 		return "Back to posts"
 	case "Snapshot":
 		return "Back to sources"
+	case "User":
+		return "Back to users"
 	default:
 		return "Admin home"
 	}
