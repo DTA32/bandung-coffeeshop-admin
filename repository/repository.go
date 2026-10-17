@@ -34,6 +34,7 @@ type Repositories struct {
 	Change         *ChangeRepository
 	Post           *PostRepository
 	Source         *SourceRepository
+	User           *UserRepository
 	Dashboard      *DashboardRepository
 }
 
@@ -49,6 +50,7 @@ func New(db *pgxpool.Pool) *Repositories {
 		Change:         NewChangeRepository(db),
 		Post:           NewPostRepository(db),
 		Source:         NewSourceRepository(db),
+		User:           NewUserRepository(db),
 		Dashboard:      NewDashboardRepository(db),
 	}
 }

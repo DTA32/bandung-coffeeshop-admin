@@ -23,6 +23,7 @@ type Controllers struct {
 	Change         *ChangeController
 	Post           *PostController
 	Source         *SourceController
+	User           *UserController
 	Dashboard      *DashboardController
 }
 
@@ -38,6 +39,7 @@ func New(repos *repository.Repositories) *Controllers {
 		Change:         NewChangeController(repos.Change),
 		Post:           NewPostController(repos.Post),
 		Source:         NewSourceController(repos.Source),
+		User:           NewUserController(repos.User),
 		Dashboard:      NewDashboardController(repos.Dashboard, repos.Source),
 	}
 }
