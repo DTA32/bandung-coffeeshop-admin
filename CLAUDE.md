@@ -130,7 +130,7 @@ tag toggles, `data-confirm`, "Saving..." labels). Saving a cafe/location returns
 Approving a field writes the live column, marks the proposal `approved` with `resolved_value`, and
 sets `cafe.updated_at = now()` (plus `location.updated_at` for `address` / `status`) — one transaction
 (`ChangeRepository.Apply` in `repository/change.repository.go`; the field -> column validation is `controllers.FieldUpdateFor`). Field → column: `hours` → `cafe.open_hour/close_hour`, `phone` →
-`cafe.phone`, `menu` → `cafe.menu`, `address` → `location.description` (the address lives there;
+`cafe.phone`, `menu` → `cafe.menu` (approval requires an http(s) URL; only the cafe form also accepts `#image-N` gallery hashes), `address` → `location.description` (the address lives there;
 `description_indo` is never touched), `status` → `location.status`. Reject/dismiss/ignore =
 `rejected`; the scraper never re-proposes a rejected value. A post approval inserts `cafe_feed` and
 stores `{"cafe_feed_id": n}`.
