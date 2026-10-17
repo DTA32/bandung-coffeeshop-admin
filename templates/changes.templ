@@ -17,10 +17,18 @@ templ ChangesPage(groups []models.CafeProposals, cafeFilter int, next, ok, errMs
 				value and bumps the cafe's last-updated date. Informational rows only need a look.
 			</p>
 			@Notice(ok, errMsg)
+			<div id="batch-flash" role="status"></div>
 			if len(groups) == 0 {
 				<p class="m-0 text-sm text-bark">Nothing to review.</p>
+			} else {
+				<label class={ checkRowCls, "text-sm text-bark" }>
+					<input type="checkbox" id="batch-all" aria-label="Select all loaded changes"/>
+					Select all loaded
+				</label>
 			}
+			<form id="batch-form" method="post" action="/changes/batch" hx-post="/changes/batch" hx-swap="none" hx-disabled-elt="#batch-bar button"></form>
 			@ChangeGroups(groups, next)
+			@batchBar()
 		}
 	}
 }
@@ -29,7 +37,7 @@ templ ChangesPage(groups []models.CafeProposals, cafeFilter int, next, ok, errMs
 // (full page and fragment responses).
 templ ChangeGroups(groups []models.CafeProposals, next string) {
 for _, g := range groups {
-	<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) }>
+	<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) } data-change-group>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<div class="flex items-baseline gap-2">
 				<a class="text-base font-bold text-forest hover:underline" href={ templ.URL("/cafes/" + g.LocationID) }>{ g.CafeName }</a>
@@ -69,7 +77,10 @@ func hasApplicable(items []models.Proposal) bool {
 templ ProposalRow(p models.Proposal, errMsg string) {
 	<div id={ "proposal-" + i64(p.ID) } class="grid grid-cols-1 gap-3 border-t border-grove-light py-3 md:grid-cols-[10rem_1fr_9.5rem]">
 		<div class="flex flex-col gap-1">
-			<span class="text-sm font-semibold text-forest">{ fieldLabel(p.Field) }</span>
+			<label class="flex items-center gap-2">
+				<input type="checkbox" name="id" value={ i64(p.ID) } form="batch-form" data-batch-row aria-label={ "Select " + fieldLabel(p.Field) }/>
+				<span class="text-sm font-semibold text-forest">{ fieldLabel(p.Field) }</span>
+			</label>
 			@SourceBadge(p.Source)
 			<span class="text-xs text-bark" title={ fmtTime(p.CreatedAt) }>detected { ago(p.CreatedAt) }</span>
 		</div>
@@ -111,9 +122,7 @@ templ ProposalRow(p models.Proposal, errMsg string) {
 					</ul>
 				</details>
 			}
-			if errMsg != "" {
-				<p class={ rowErrorCls } role="alert">{ errMsg }</p>
-			}
+			<p id={ "proposal-err-" + i64(p.ID) } class={ rowErrorCls } role="alert" hidden?={ errMsg == "" }>{ errMsg }</p>
 		</div>
 		<div class="flex flex-col items-stretch gap-1">
 			if models.IsInformational(p.Field) {
@@ -192,4 +201,43 @@ templ ProposalResolved(p models.Proposal, status, detail string) {
 			<span class="text-bark">{ detail }</span>
 		}
 	</div>
+}
+
+// batchBar is the sticky action bar shown while 1+ rows are selected
+// (static/js/forms.js toggles it and fills the count / confirm texts). Its
+// buttons submit the empty #batch-form via the form attribute.
+templ batchBar() {
+	<div id="batch-bar" class="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-grove-light bg-white p-3 shadow-md" hidden>
+		<span class="text-sm font-semibold text-forest" data-batch-count>0 selected</span>
+		<div class="ml-auto flex flex-wrap gap-2">
+			<button type="submit" form="batch-form" name="action" value="approve" class={ btnPrimarySmCls } data-confirm="Approve selected changes?" data-batch-approve>
+				@Icon("check", 14)
+				Approve selected
+			</button>
+			<button type="submit" form="batch-form" name="action" value="reject" class={ btnDeleteSmCls } data-confirm="Reject selected changes?" data-batch-reject>
+				@Icon("x", 14)
+				Reject selected
+			</button>
+			<button type="button" class={ btnOutlineSmCls } data-batch-clear>Clear</button>
+		</div>
+	</div>
+}
+
+// BatchResult is the HTMX response of POST /changes/batch, all out-of-band:
+// the summary flash, deletion of processed rows and the reason under each
+// failed row (which stays in the list, still selected).
+templ BatchResult(res models.BatchResult, msg string, isErr bool) {
+	<div id="batch-flash" role="status" hx-swap-oob="true">
+		if isErr {
+			<div class={ errorBoxCls }>{ msg }</div>
+		} else {
+			<div class={ okBoxCls }>{ msg }</div>
+		}
+	</div>
+	for _, id := range res.Done {
+		<div id={ "proposal-" + i64(id) } hx-swap-oob="delete"></div>
+	}
+	for _, f := range res.Failed {
+		<p id={ "proposal-err-" + i64(f.ID) } class={ rowErrorCls } role="alert" hx-swap-oob="true">{ f.Reason }</p>
+	}
 }

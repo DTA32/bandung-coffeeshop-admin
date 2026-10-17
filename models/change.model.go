@@ -78,3 +78,19 @@ type FieldUpdate struct {
 	OpenHour  *string // hours
 	CloseHour *string // hours
 }
+
+// BatchFailure is one item of a batch that could not be processed.
+type BatchFailure struct {
+	ID     int64
+	Reason string
+}
+
+// BatchResult is the outcome of a batch approve / reject. Done items were
+// resolved (their rows leave the queue); Skipped items are informational
+// proposals left untouched by an approve; Failed items stay pending.
+type BatchResult struct {
+	Action  string
+	Done    []int64
+	Skipped []int64
+	Failed  []BatchFailure
+}

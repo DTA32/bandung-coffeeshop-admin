@@ -1,6 +1,6 @@
 // Small progressive enhancements that replace the console's React state:
 // the Leaflet coordinate picker and geoman polygon editor, the orderable image list,
-// rating / tag toggles, confirm prompts and the "Saving..." button label.
+// rating / tag toggles, /changes batch selection, confirm prompts and the "Saving..." button label.
 ;(function () {
   'use strict'
 
@@ -354,6 +354,57 @@
     if (err) err.textContent = ''
   })
 
+  // Batch select on /changes: row checkboxes (also rows appended later by
+  // infinite scroll), "select all loaded", sticky action bar. Delegated, so
+  // new rows start unchecked and everything re-syncs after any htmx swap.
+  function syncBatch() {
+    var bar = document.getElementById('batch-bar')
+    if (!bar) return
+    document.querySelectorAll('[data-change-group]').forEach(function (g) {
+      if (!g.querySelector('[id^="proposal-"]')) g.remove()
+    })
+    var rows = document.querySelectorAll('[data-batch-row]')
+    var n = 0
+    rows.forEach(function (c) {
+      if (c.checked) n++
+    })
+    var all = document.getElementById('batch-all')
+    if (all) {
+      all.checked = rows.length > 0 && n === rows.length
+      all.indeterminate = n > 0 && n < rows.length
+    }
+    bar.hidden = n === 0
+    var label = n + ' selected'
+    bar.querySelector('[data-batch-count]').textContent = label
+    var a = bar.querySelector('[data-batch-approve]')
+    var r = bar.querySelector('[data-batch-reject]')
+    a.dataset.confirm = 'Approve ' + n + ' selected change(s) as proposed? Informational ones are skipped.'
+    r.dataset.confirm = 'Reject ' + n + ' selected change(s)? The scraper will not re-propose them.'
+  }
+  document.addEventListener('change', function (e) {
+    var t = e.target
+    if (t.id === 'batch-all') {
+      document.querySelectorAll('[data-batch-row]').forEach(function (c) {
+        c.checked = t.checked
+      })
+      syncBatch()
+    } else if (t.matches && t.matches('[data-batch-row]')) {
+      syncBatch()
+    }
+  })
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-batch-clear]')) {
+      document.querySelectorAll('[data-batch-row]').forEach(function (c) {
+        c.checked = false
+      })
+      syncBatch()
+    }
+  })
+  ;['htmx:afterSwap', 'htmx:oobAfterSwap', 'htmx:afterSettle'].forEach(function (ev) {
+    document.body.addEventListener(ev, syncBatch)
+  })
+  window.addEventListener('pageshow', syncBatch)
+
   // Selects with data-autosubmit submit their GET form on change (cafe list sort).
   document.addEventListener('change', function (e) {
     var sel = e.target.closest && e.target.closest('[data-autosubmit]')
@@ -400,5 +451,6 @@
     document.querySelectorAll('[data-location-type]').forEach(initLocationType)
     document.querySelectorAll('[data-images-editor]').forEach(initImagesEditor)
     document.querySelectorAll('[data-rating]').forEach(initRating)
+    syncBatch()
   })
 })()
