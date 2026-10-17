@@ -5,13 +5,15 @@ ARG TAILWIND_VERSION=v4.3.3
 WORKDIR /app
 
 # Tailwind v4 standalone CLI (no Node), pinned and checksum-verified.
+# Retries cover flaky runner -> GitHub release downloads (connection resets).
 RUN set -eu; \
     case "$TARGETARCH" in \
       amd64) asset=tailwindcss-linux-x64;   sum=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a ;; \
       arm64) asset=tailwindcss-linux-arm64; sum=55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195 ;; \
       *) echo "unsupported arch $TARGETARCH"; exit 1 ;; \
     esac; \
-    curl -sSfL -o /usr/local/bin/tailwindcss "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/${asset}"; \
+    curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 120 \
+      -o /usr/local/bin/tailwindcss "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/${asset}"; \
     echo "${sum}  /usr/local/bin/tailwindcss" | sha256sum -c -; \
     chmod +x /usr/local/bin/tailwindcss
 
