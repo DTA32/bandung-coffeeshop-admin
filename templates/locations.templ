@@ -2,9 +2,12 @@ package templates
 
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
+// LocationListID is the id of the list container (typeahead target).
+const LocationListID = "location-list"
+
 // LocationListPage ports admin.locations.index.tsx (poi / area / district only;
-// cafes live in the cafe console).
-templ LocationListPage(items []models.LocationListItem, typ, ok string) {
+// cafes live in the cafe console). Search is server-side typeahead.
+templ LocationListPage(items []models.LocationListItem, typ, q, next, ok string) {
 	@Layout("Locations", NavLocations) {
 		@Page(pageCls) {
 			@BackLink("/", "Admin home")
@@ -16,27 +19,50 @@ templ LocationListPage(items []models.LocationListItem, typ, ok string) {
 				</a>
 			</div>
 			@Notice(ok, "")
-			<input
-				class={ searchCls }
-				type="search"
-				placeholder="Search name or id..."
-				aria-label="Search locations"
-				data-list-filter="#location-list"
-			/>
-			<div class="flex flex-col gap-2" id="location-list">
-				<p class="text-sm text-bark" data-list-empty hidden?={ len(items) > 0 }>No locations found.</p>
-				for _, l := range items {
-					<a href={ templ.URL("/locations/" + l.ID) } class={ listRowCls } data-search={ lower(l.Name + " " + l.ID) }>
-						<div class="flex flex-col">
-							<span class="text-sm font-semibold text-forest">{ l.Name }</span>
-							<span class="text-xs text-bark">{ l.ID } · { l.Type }</span>
-						</div>
-						@StatusBadge(l.Status)
-					</a>
+			<form method="get" action="/locations" class="flex flex-col">
+				<input
+					class={ searchCls }
+					type="search"
+					name="q"
+					value={ q }
+					placeholder="Search name or id..."
+					aria-label="Search locations"
+					autocomplete="off"
+					hx-get="/locations"
+					hx-trigger="input changed delay:300ms, search"
+					hx-target={ "#" + LocationListID }
+					hx-swap="innerHTML"
+					hx-push-url="true"
+					hx-include="#location-type"
+					hx-sync="this:replace"
+				/>
+				if typ != "" {
+					<input type="hidden" id="location-type" name="type" value={ typ }/>
 				}
+			</form>
+			<div class="flex flex-col gap-2" id={ LocationListID }>
+				@LocationListRows(items, q, next, true)
 			</div>
 		}
 	}
+}
+
+// LocationListRows is the list body (rows, empty state on the first page,
+// next-page sentinel).
+templ LocationListRows(items []models.LocationListItem, q, next string, first bool) {
+	if len(items) == 0 && first {
+		<p class="text-sm text-bark">{ emptyListText("locations", q) }</p>
+	}
+	for _, l := range items {
+		<a href={ templ.URL("/locations/" + l.ID) } class={ listRowCls }>
+			<div class="flex flex-col">
+				<span class="text-sm font-semibold text-forest">{ l.Name }</span>
+				<span class="text-xs text-bark">{ l.ID } · { l.Type }</span>
+			</div>
+			@StatusBadge(l.Status)
+		</a>
+	}
+	@LoadMore(next)
 }
 
 // LocationFormPage ports admin.locations.new.tsx / $locationId.tsx +

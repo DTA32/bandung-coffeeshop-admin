@@ -28,27 +28,50 @@ var cafeListOrder = map[string]string{
 	models.CafeSortUpdatedDesc: "GREATEST(l.updated_at, c.updated_at) DESC, l.name ASC, l.id ASC",
 }
 
-func (r *CafeRepository) List(ctx context.Context, q, sort string) ([]models.CafeListItem, error) {
+func scanCafeListItem(row pgx.CollectableRow) (models.CafeListItem, error) {
+	var it models.CafeListItem
+	err := row.Scan(&it.ID, &it.CafeID, &it.Name, &it.Status, &it.IsFeatured, &it.Instagram, &it.UpdatedAt)
+	return it, err
+}
+
+// List returns one page (1-based) of cafes whose name or location id (slug)
+// contains q (case-insensitive, wildcards escaped; "" = all). The order's
+// final tiebreaker is l.id (unique), so paging is deterministic.
+func (r *CafeRepository) List(ctx context.Context, q, sort string, page int) (models.Page[models.CafeListItem], error) {
 	order, ok := cafeListOrder[sort]
 	if !ok {
 		order = cafeListOrder[models.CafeSortUpdatedAsc]
 	}
+	limit, offset := pageWindow(page)
 	rows, err := r.db.Query(ctx, `
 		SELECT l.id, c.id, l.name, l.status::text, c.is_featured, c.instagram,
 		       TO_CHAR(GREATEST(l.updated_at, c.updated_at), 'YYYY-MM-DD')
 		FROM location l
 		JOIN cafe c ON c.location_id = l.id
 		WHERE l.type = 'cafe'
-		  AND ($1 = '' OR l.name ILIKE '%' || $1 || '%' OR l.id ILIKE '%' || $1 || '%')
-		ORDER BY `+order, q)
+		  AND ($1::text = '' OR l.name ILIKE '%' || $1 || '%' OR l.id ILIKE '%' || $1 || '%')
+		ORDER BY `+order+`
+		LIMIT $2 OFFSET $3`, EscapeLike(q), limit, offset)
+	if err != nil {
+		return models.Page[models.CafeListItem]{}, err
+	}
+	items, err := pgx.CollectRows(rows, scanCafeListItem)
+	return toPage(items), err
+}
+
+// Options returns every cafe (id, name, status) ordered by name, for <select>s.
+func (r *CafeRepository) Options(ctx context.Context) ([]models.CafeListItem, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT l.id, c.id, l.name, l.status::text, c.is_featured, c.instagram,
+		       TO_CHAR(GREATEST(l.updated_at, c.updated_at), 'YYYY-MM-DD')
+		FROM location l
+		JOIN cafe c ON c.location_id = l.id
+		WHERE l.type = 'cafe'
+		ORDER BY l.name ASC, l.id ASC`)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.CafeListItem, error) {
-		var it models.CafeListItem
-		err := row.Scan(&it.ID, &it.CafeID, &it.Name, &it.Status, &it.IsFeatured, &it.Instagram, &it.UpdatedAt)
-		return it, err
-	})
+	return pgx.CollectRows(rows, scanCafeListItem)
 }
 
 // Get assembles the full editable payload for a single cafe.

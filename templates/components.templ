@@ -119,3 +119,22 @@ templ imageRow(im models.Image) {
 templ Deleted(what string) {
 	@templ.Raw("")
 }
+
+// LoadMore is the infinite-scroll sentinel: when it scrolls into view it
+// fetches next (the same list URL with page=N+1 and the current filters) and
+// replaces itself with the next rows (plus a new sentinel). Rendered only while
+// another page exists.
+templ LoadMore(next string) {
+	if next != "" {
+		<div class="col-span-full py-3 text-center text-sm text-bark" role="status" hx-get={ next } hx-trigger="revealed" hx-swap="outerHTML">Loading…</div>
+	}
+}
+
+// LoadMoreRow is LoadMore for table bodies.
+templ LoadMoreRow(next string, cols int) {
+	if next != "" {
+		<tr hx-get={ next } hx-trigger="revealed" hx-swap="outerHTML">
+			<td colspan={ itoa(cols) } class="py-3 text-center text-sm text-bark" role="status">Loading…</td>
+		</tr>
+	}
+}

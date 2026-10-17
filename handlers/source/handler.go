@@ -23,7 +23,7 @@ func renderSources(h *handlers.Handler, w http.ResponseWriter, r *http.Request, 
 		h.ServerError(w, r, err)
 		return
 	}
-	cafes, err := h.Ctl.Cafe.List(r.Context(), "", "")
+	cafes, err := h.Ctl.Cafe.Options(r.Context())
 	if err != nil {
 		h.ServerError(w, r, err)
 		return

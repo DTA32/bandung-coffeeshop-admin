@@ -19,21 +19,27 @@ func NewLocationRepository(db *pgxpool.Pool) *LocationRepository {
 	return &LocationRepository{db: db}
 }
 
-func (r *LocationRepository) List(ctx context.Context, typ string) ([]models.LocationListItem, error) {
+// List returns one page (1-based) of non-cafe locations, optionally of one
+// type, whose name or id contains q (case-insensitive, wildcards escaped).
+func (r *LocationRepository) List(ctx context.Context, typ, q string, page int) (models.Page[models.LocationListItem], error) {
+	limit, offset := pageWindow(page)
 	rows, err := r.db.Query(ctx, `
 		SELECT id, name, type::text, status::text
 		FROM location
 		WHERE type <> 'cafe' AND ($1 = '' OR type::text = $1)
-		ORDER BY type, name ASC
-	`, typ)
+		  AND ($2::text = '' OR name ILIKE '%' || $2 || '%' OR id ILIKE '%' || $2 || '%')
+		ORDER BY type, name ASC, id ASC
+		LIMIT $3 OFFSET $4
+	`, typ, EscapeLike(q), limit, offset)
 	if err != nil {
-		return nil, err
+		return models.Page[models.LocationListItem]{}, err
 	}
-	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LocationListItem, error) {
+	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.LocationListItem, error) {
 		var it models.LocationListItem
 		err := row.Scan(&it.ID, &it.Name, &it.Type, &it.Status)
 		return it, err
 	})
+	return toPage(items), err
 }
 
 func (r *LocationRepository) Get(ctx context.Context, id string) (*models.Location, error) {

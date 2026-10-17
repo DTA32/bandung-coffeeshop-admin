@@ -232,6 +232,14 @@ func i64p(i *int64) string {
 
 func lower(s string) string { return strings.ToLower(s) }
 
+// emptyListText is the empty-state message of a searchable list.
+func emptyListText(what, q string) string {
+	if q != "" {
+		return "No " + what + " match \"" + q + "\"."
+	}
+	return "No " + what + " found."
+}
+
 func boolParam(b bool) string {
 	if b {
 		return "1"

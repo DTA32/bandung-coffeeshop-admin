@@ -18,8 +18,8 @@ func NewLocationController(repo *repository.LocationRepository) *LocationControl
 	return &LocationController{repo: repo}
 }
 
-func (c *LocationController) List(ctx context.Context, typ string) ([]models.LocationListItem, error) {
-	return c.repo.List(ctx, typ)
+func (c *LocationController) List(ctx context.Context, typ, q string, page int) (models.Page[models.LocationListItem], error) {
+	return c.repo.List(ctx, typ, q, page)
 }
 
 func (c *LocationController) Get(ctx context.Context, id string) (*models.Location, error) {

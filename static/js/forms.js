@@ -1,5 +1,5 @@
 // Small progressive enhancements that replace the console's React state:
-// list search, the Leaflet coordinate picker and geoman polygon editor, the orderable image list,
+// the Leaflet coordinate picker and geoman polygon editor, the orderable image list,
 // rating / tag toggles, confirm prompts and the "Saving..." button label.
 ;(function () {
   'use strict'
@@ -354,24 +354,6 @@
     if (err) err.textContent = ''
   })
 
-  // List search (cafes, locations): filter rendered rows by name / id.
-  function initListFilter(input) {
-    var list = document.querySelector(input.dataset.listFilter)
-    var empty = list.querySelector('[data-list-empty]')
-    function run() {
-      var q = input.value.trim().toLowerCase()
-      var shown = 0
-      list.querySelectorAll('[data-search]').forEach(function (row) {
-        var hit = row.dataset.search.indexOf(q) !== -1
-        row.hidden = !hit
-        if (hit) shown++
-      })
-      if (empty) empty.hidden = shown > 0
-    }
-    input.addEventListener('input', run)
-    run()
-  }
-
   // Selects with data-autosubmit submit their GET form on change (cafe list sort).
   document.addEventListener('change', function (e) {
     var sel = e.target.closest && e.target.closest('[data-autosubmit]')
@@ -418,6 +400,5 @@
     document.querySelectorAll('[data-location-type]').forEach(initLocationType)
     document.querySelectorAll('[data-images-editor]').forEach(initImagesEditor)
     document.querySelectorAll('[data-rating]').forEach(initRating)
-    document.querySelectorAll('[data-list-filter]').forEach(initListFilter)
   })
 })()

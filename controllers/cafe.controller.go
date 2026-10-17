@@ -24,8 +24,13 @@ func (c *CafeController) TouchTag(ctx context.Context, locationID string, tagID 
 	return c.repo.TouchTag(ctx, locationID, tagID)
 }
 
-func (c *CafeController) List(ctx context.Context, q, sort string) ([]models.CafeListItem, error) {
-	return c.repo.List(ctx, q, sort)
+func (c *CafeController) List(ctx context.Context, q, sort string, page int) (models.Page[models.CafeListItem], error) {
+	return c.repo.List(ctx, q, sort, page)
+}
+
+// Options lists every cafe for dropdowns (no paging).
+func (c *CafeController) Options(ctx context.Context) ([]models.CafeListItem, error) {
+	return c.repo.Options(ctx)
 }
 
 func (c *CafeController) Get(ctx context.Context, id string) (*models.Cafe, error) {

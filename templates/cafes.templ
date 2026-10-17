@@ -6,9 +6,14 @@ import (
 	"github.com/dta32/bandung-coffeeshop-admin/models"
 )
 
-// CafeListPage ports admin.cafes.index.tsx. The search box filters the
-// rendered rows client-side (static/js/forms.js), like the console.
-templ CafeListPage(items []models.CafeListItem, q, sort, ok string) {
+// CafeListID is the id of the list container; typeahead requests target it
+// (utils.ParseListParams recognises the HX-Target).
+const CafeListID = "cafe-list"
+
+// CafeListPage ports admin.cafes.index.tsx. Search is server-side: the input
+// is a typeahead (hx-get on /cafes with q + sort, innerHTML swap of the list,
+// URL pushed), and the rows load by infinite scroll (see LoadMore).
+templ CafeListPage(items []models.CafeListItem, q, sort, next, ok string) {
 	@Layout("Cafes", NavCafes) {
 		@Page(pageCls) {
 			@BackLink("/", "Admin home")
@@ -30,7 +35,14 @@ templ CafeListPage(items []models.CafeListItem, q, sort, ok string) {
 						name="q"
 						placeholder="Search cafe name or id..."
 						value={ q }
-						data-list-filter="#cafe-list"
+						autocomplete="off"
+						hx-get="/cafes"
+						hx-trigger="input changed delay:300ms, search"
+						hx-target={ "#" + CafeListID }
+						hx-swap="innerHTML"
+						hx-push-url="true"
+						hx-include="#cafe-sort"
+						hx-sync="this:replace"
 					/>
 				</div>
 				<div class="flex flex-col gap-1">
@@ -41,20 +53,29 @@ templ CafeListPage(items []models.CafeListItem, q, sort, ok string) {
 					</select>
 				</div>
 			</form>
-			<div class="flex flex-col gap-2" id="cafe-list">
-				<p class="text-sm text-bark" data-list-empty hidden?={ len(items) > 0 }>No cafes found.</p>
-				for _, c := range items {
-					<a href={ templ.URL("/cafes/" + c.ID) } class={ listRowCls } data-search={ lower(c.Name + " " + c.ID) }>
-						<div class="flex flex-col">
-							<span class="text-sm font-semibold text-forest">{ c.Name }</span>
-							<span class="text-xs text-bark">{ c.ID }</span>
-						</div>
-						@StatusBadge(c.Status)
-					</a>
-				}
+			<div class="flex flex-col gap-2" id={ CafeListID }>
+				@CafeListRows(items, q, next, true)
 			</div>
 		}
 	}
+}
+
+// CafeListRows is the list body: the rows, an empty state (first page only)
+// and the next-page sentinel. Used by the full page and by fragment responses.
+templ CafeListRows(items []models.CafeListItem, q, next string, first bool) {
+	if len(items) == 0 && first {
+		<p class="text-sm text-bark">{ emptyListText("cafes", q) }</p>
+	}
+	for _, c := range items {
+		<a href={ templ.URL("/cafes/" + c.ID) } class={ listRowCls }>
+			<div class="flex flex-col">
+				<span class="text-sm font-semibold text-forest">{ c.Name }</span>
+				<span class="text-xs text-bark">{ c.ID }</span>
+			</div>
+			@StatusBadge(c.Status)
+		</a>
+	}
+	@LoadMore(next)
 }
 
 // CafeFormPage ports admin.cafes.new.tsx / admin.cafes.$cafeId.tsx +
