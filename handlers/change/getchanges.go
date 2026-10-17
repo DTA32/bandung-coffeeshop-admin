@@ -2,6 +2,8 @@ package change
 
 import (
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/dta32/bandung-coffeeshop-admin/handlers"
 	"github.com/dta32/bandung-coffeeshop-admin/templates"
@@ -13,12 +15,22 @@ type GetChangesHandler struct{ *handlers.Handler }
 func NewGetChangesHandler(h *handlers.Handler) *GetChangesHandler { return &GetChangesHandler{h} }
 
 func (h *GetChangesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	lp := utils.ParseListParams(r, "")
 	cafeID := utils.QueryInt(r, "cafe")
-	groups, err := h.Ctl.Change.List(r.Context(), cafeID)
+	pg, err := h.Ctl.Change.List(r.Context(), cafeID, lp.Page)
 	if err != nil {
 		h.ServerError(w, r, err)
 		return
 	}
+	cafeParam := ""
+	if cafeID != 0 {
+		cafeParam = strconv.Itoa(cafeID)
+	}
+	next := lp.Next("/changes", url.Values{"cafe": {cafeParam}}, pg.HasMore)
+	if lp.Fragment {
+		h.Render(w, r, http.StatusOK, templates.ChangeGroups(pg.Items, next))
+		return
+	}
 	q := r.URL.Query()
-	h.Render(w, r, http.StatusOK, templates.ChangesPage(groups, cafeID, q.Get("ok"), q.Get("err")))
+	h.Render(w, r, http.StatusOK, templates.ChangesPage(pg.Items, cafeID, next, q.Get("ok"), q.Get("err")))
 }

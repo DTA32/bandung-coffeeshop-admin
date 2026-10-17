@@ -17,6 +17,21 @@ func NewRatingTypeRepository(db *pgxpool.Pool) *RatingTypeRepository {
 	return &RatingTypeRepository{db: db}
 }
 
+// ListPage returns one page (1-based) of rating types ordered by type.
+func (r *RatingTypeRepository) ListPage(ctx context.Context, page int) (models.Page[models.RatingType], error) {
+	limit, offset := pageWindow(page)
+	rows, err := r.db.Query(ctx, `SELECT type, label, label_indo FROM rating_type_label ORDER BY type ASC LIMIT $1 OFFSET $2`, limit, offset)
+	if err != nil {
+		return models.Page[models.RatingType]{}, err
+	}
+	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.RatingType, error) {
+		var rt models.RatingType
+		err := row.Scan(&rt.Type, &rt.Label, &rt.LabelIndo)
+		return rt, err
+	})
+	return toPage(items), err
+}
+
 func (r *RatingTypeRepository) List(ctx context.Context) ([]models.RatingType, error) {
 	rows, err := r.db.Query(ctx, `SELECT type, label, label_indo FROM rating_type_label ORDER BY type ASC`)
 	if err != nil {

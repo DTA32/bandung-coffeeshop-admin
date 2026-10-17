@@ -19,6 +19,26 @@ func NewPostRepository(db *pgxpool.Pool) *PostRepository {
 	return &PostRepository{db: db}
 }
 
+// ListPendingPage returns one page (1-based) of pending post proposals.
+func (r *PostRepository) ListPendingPage(ctx context.Context, cafeID, page int) (models.Page[models.Proposal], error) {
+	limit, offset := pageWindow(page)
+	rows, err := r.db.Query(ctx, `
+		SELECT `+proposalColumns+`
+		FROM change_proposal p
+		JOIN cafe c ON c.id = p.cafe_id
+		JOIN location l ON l.id = c.location_id
+		WHERE p.status = 'pending' AND p.field = 'ig_post'
+		  AND ($1 = 0 OR p.cafe_id = $1)
+		ORDER BY p.new_value->>'taken_at' DESC NULLS LAST, p.id DESC
+		LIMIT $2 OFFSET $3
+	`, cafeID, limit, offset)
+	if err != nil {
+		return models.Page[models.Proposal]{}, err
+	}
+	items, err := pgx.CollectRows(rows, scanProposal)
+	return toPage(items), err
+}
+
 func (r *PostRepository) ListPending(ctx context.Context, cafeID int) ([]models.Proposal, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT `+proposalColumns+`

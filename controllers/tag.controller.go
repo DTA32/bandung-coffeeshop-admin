@@ -20,6 +20,11 @@ func (c *TagController) List(ctx context.Context) ([]models.Tag, error) {
 	return c.repo.List(ctx)
 }
 
+// ListPage returns one page of tags for the tags page.
+func (c *TagController) ListPage(ctx context.Context, page int) (models.Page[models.Tag], error) {
+	return c.repo.ListPage(ctx, page)
+}
+
 // Create normalises t, inserts it and sets t.ID.
 func (c *TagController) Create(ctx context.Context, t *models.Tag) error {
 	if err := NormalizeTag(t); err != nil {

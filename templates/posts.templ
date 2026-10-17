@@ -2,7 +2,7 @@ package templates
 
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
-templ PostsPage(posts []models.Post, cafeFilter int, ok string) {
+templ PostsPage(posts []models.Post, cafeFilter int, next, ok string) {
 	@Layout("Instagram posts", NavPosts) {
 		@Page(pageWideCls) {
 			@BackLink("/", "Admin home")
@@ -18,12 +18,18 @@ templ PostsPage(posts []models.Post, cafeFilter int, ok string) {
 				<p class="m-0 text-sm text-bark">No new posts.</p>
 			}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-				for _, p := range posts {
-					@PostCard(p)
-				}
+				@PostCards(posts, next)
 			</div>
 		}
 	}
+}
+
+// PostCards renders post cards plus the next-page sentinel (grid children).
+templ PostCards(posts []models.Post, next string) {
+	for _, p := range posts {
+		@PostCard(p)
+	}
+	@LoadMore(next)
 }
 
 templ PostCard(p models.Post) {

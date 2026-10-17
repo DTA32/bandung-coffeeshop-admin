@@ -66,6 +66,49 @@ func (r *ChangeRepository) ListPending(ctx context.Context, cafeID int) ([]model
 	return pgx.CollectRows(rows, scanProposal)
 }
 
+// ListPendingPage returns the pending non-post proposals of one page (1-based)
+// of *cafes* (PageSize cafes ordered by name, id), so a cafe's group is never
+// split across pages. hasMore reports whether another page of cafes exists.
+func (r *ChangeRepository) ListPendingPage(ctx context.Context, cafeID, page int) (items []models.Proposal, hasMore bool, err error) {
+	limit, offset := pageWindow(page)
+	idRows, err := r.db.Query(ctx, `
+		SELECT c.id
+		FROM cafe c
+		JOIN location l ON l.id = c.location_id
+		WHERE ($1 = 0 OR c.id = $1)
+		  AND EXISTS (SELECT 1 FROM change_proposal p
+		              WHERE p.cafe_id = c.id AND p.status = 'pending' AND p.field <> 'ig_post')
+		ORDER BY l.name, c.id
+		LIMIT $2 OFFSET $3
+	`, cafeID, limit, offset)
+	if err != nil {
+		return nil, false, err
+	}
+	ids, err := pgx.CollectRows(idRows, pgx.RowTo[int])
+	if err != nil {
+		return nil, false, err
+	}
+	if len(ids) > PageSize {
+		ids, hasMore = ids[:PageSize], true
+	}
+	if len(ids) == 0 {
+		return nil, false, nil
+	}
+	rows, err := r.db.Query(ctx, `
+		SELECT `+proposalColumns+`
+		FROM change_proposal p
+		JOIN cafe c ON c.id = p.cafe_id
+		JOIN location l ON l.id = c.location_id
+		WHERE p.status = 'pending' AND p.field <> 'ig_post' AND p.cafe_id = ANY($1)
+		ORDER BY l.name, p.cafe_id, p.field, p.created_at, p.id
+	`, ids)
+	if err != nil {
+		return nil, false, err
+	}
+	items, err = pgx.CollectRows(rows, scanProposal)
+	return items, hasMore, err
+}
+
 func (r *ChangeRepository) Get(ctx context.Context, id int64) (*models.Proposal, error) {
 	return getProposal(ctx, r.db, id)
 }

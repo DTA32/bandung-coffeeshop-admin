@@ -8,7 +8,7 @@ type SourcesFilter struct {
 	CafeID  int
 }
 
-templ SourcesPage(targets []models.SourceTarget, runs []models.ScrapeRun, cafes []models.CafeListItem, f SourcesFilter, ok, errMsg string) {
+templ SourcesPage(targets []models.SourceTarget, next string, runs []models.ScrapeRun, cafes []models.CafeListItem, f SourcesFilter, ok, errMsg string) {
 	@Layout("Sources", NavSources) {
 		@Page(pageWideCls) {
 			@BackLink("/", "Admin home")
@@ -91,18 +91,25 @@ templ SourcesPage(targets []models.SourceTarget, runs []models.ScrapeRun, cafes 
 							</tr>
 						</thead>
 						<tbody>
-							for _, t := range targets {
-								@TargetRow(t, "")
-							}
-							if len(targets) == 0 {
-								<tr><td colspan="8" class="py-3 text-sm text-bark">No targets yet. They appear after the first scraper run.</td></tr>
-							}
+							@TargetRows(targets, next, true)
 						</tbody>
 					</table>
 				</div>
 			</section>
 		}
 	}
+}
+
+// TargetRows renders target rows, the empty state (first page only) and the
+// next-page sentinel row.
+templ TargetRows(targets []models.SourceTarget, next string, first bool) {
+	for _, t := range targets {
+		@TargetRow(t, "")
+	}
+	if len(targets) == 0 && first {
+		<tr><td colspan="8" class="py-3 text-sm text-bark">No targets yet. They appear after the first scraper run.</td></tr>
+	}
+	@LoadMoreRow(next, 8)
 }
 
 func targetKey(t models.SourceTarget) string {

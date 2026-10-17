@@ -27,6 +27,20 @@ func (r *TagRepository) List(ctx context.Context) ([]models.Tag, error) {
 	return pgx.CollectRows(rows, scanTag)
 }
 
+// ListPage returns one page (1-based) of tags ordered by name (id breaks ties).
+func (r *TagRepository) ListPage(ctx context.Context, page int) (models.Page[models.Tag], error) {
+	limit, offset := pageWindow(page)
+	rows, err := r.db.Query(ctx, `
+		SELECT id, name, name_indo, slug, description, description_indo
+		FROM tag ORDER BY name ASC, id ASC LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return models.Page[models.Tag]{}, err
+	}
+	items, err := pgx.CollectRows(rows, scanTag)
+	return toPage(items), err
+}
+
 func (r *TagRepository) Get(ctx context.Context, id int) (*models.Tag, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, name, name_indo, slug, description, description_indo FROM tag WHERE id = $1

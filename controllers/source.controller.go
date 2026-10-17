@@ -22,6 +22,11 @@ func NewSourceController(repo *repository.SourceRepository) *SourceController {
 	return &SourceController{repo: repo}
 }
 
+// ListTargetsPage returns one page of targets for the sources page.
+func (c *SourceController) ListTargetsPage(ctx context.Context, f models.TargetFilter, page int) (models.Page[models.SourceTarget], error) {
+	return c.repo.ListTargetsPage(ctx, f, page)
+}
+
 func (c *SourceController) ListTargets(ctx context.Context, f models.TargetFilter) ([]models.SourceTarget, error) {
 	return c.repo.ListTargets(ctx, f)
 }

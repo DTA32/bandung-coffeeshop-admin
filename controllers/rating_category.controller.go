@@ -16,6 +16,11 @@ func NewRatingCategoryController(repo *repository.RatingCategoryRepository) *Rat
 	return &RatingCategoryController{repo: repo}
 }
 
+// ListPage returns one page of rating categories for the categories page.
+func (c *RatingCategoryController) ListPage(ctx context.Context, page int) (models.Page[models.RatingCategory], error) {
+	return c.repo.ListPage(ctx, page)
+}
+
 func (c *RatingCategoryController) List(ctx context.Context) ([]models.RatingCategory, error) {
 	return c.repo.List(ctx)
 }

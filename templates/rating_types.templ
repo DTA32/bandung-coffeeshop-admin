@@ -3,7 +3,7 @@ package templates
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
 // RatingTypesPage ports admin.rating-types.tsx.
-templ RatingTypesPage(types []models.RatingType, errMsg string) {
+templ RatingTypesPage(types []models.RatingType, next, errMsg string) {
 	@Layout("Rating types", NavRatings) {
 		@Page(pageNarrowCls) {
 			@BackLink("/", "Admin home")
@@ -35,12 +35,18 @@ templ RatingTypesPage(types []models.RatingType, errMsg string) {
 				</button>
 			</form>
 			<div class="flex flex-col gap-3">
-				for _, rt := range types {
-					@RatingTypeRow(rt, "")
-				}
+				@RatingTypeRows(types, next)
 			</div>
 		}
 	}
+}
+
+// RatingTypeRows renders rating type cards plus the next-page sentinel.
+templ RatingTypeRows(types []models.RatingType, next string) {
+	for _, rt := range types {
+		@RatingTypeRow(rt, "")
+	}
+	@LoadMore(next)
 }
 
 templ RatingTypeRow(rt models.RatingType, errMsg string) {

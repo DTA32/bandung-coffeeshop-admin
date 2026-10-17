@@ -3,7 +3,7 @@ package templates
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
 // TagsPage ports admin.tags.tsx.
-templ TagsPage(tags []models.Tag, errMsg string) {
+templ TagsPage(tags []models.Tag, next, errMsg string) {
 	@Layout("Tags", NavTags) {
 		@Page(pageNarrowCls) {
 			@BackLink("/", "Admin home")
@@ -30,12 +30,18 @@ templ TagsPage(tags []models.Tag, errMsg string) {
 				</button>
 			</form>
 			<div class="flex flex-col gap-3">
-				for _, t := range tags {
-					@TagRow(t, "")
-				}
+				@TagRows(tags, next)
 			</div>
 		}
 	}
+}
+
+// TagRows renders tag cards plus the next-page sentinel.
+templ TagRows(tags []models.Tag, next string) {
+	for _, t := range tags {
+		@TagRow(t, "")
+	}
+	@LoadMore(next)
 }
 
 // TagRow is an inline-editable card, swapped in place by HTMX.

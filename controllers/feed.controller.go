@@ -18,8 +18,8 @@ func NewFeedController(repo *repository.FeedRepository) *FeedController {
 	return &FeedController{repo: repo}
 }
 
-func (c *FeedController) List(ctx context.Context, cafeID int) ([]models.Feed, error) {
-	return c.repo.List(ctx, cafeID)
+func (c *FeedController) List(ctx context.Context, cafeID, page int) (models.Page[models.Feed], error) {
+	return c.repo.List(ctx, cafeID, page)
 }
 
 func (c *FeedController) Get(ctx context.Context, cafeID, id int) (*models.Feed, error) {

@@ -3,6 +3,8 @@ package source
 
 import (
 	"net/http"
+	"net/url"
+	"strconv"
 
 	"github.com/dta32/bandung-coffeeshop-admin/handlers"
 	"github.com/dta32/bandung-coffeeshop-admin/models"
@@ -13,9 +15,15 @@ import (
 func renderSources(h *handlers.Handler, w http.ResponseWriter, r *http.Request, status int, ok, errMsg string) {
 	q := r.URL.Query()
 	f := templates.SourcesFilter{Source: q.Get("source"), Failing: q.Get("failing") != "", CafeID: utils.QueryInt(r, "cafe")}
-	targets, err := h.Ctl.Source.ListTargets(r.Context(), models.TargetFilter{Source: f.Source, FailingOnly: f.Failing, CafeID: f.CafeID})
+	lp := utils.ParseListParams(r, "")
+	pg, err := h.Ctl.Source.ListTargetsPage(r.Context(), models.TargetFilter{Source: f.Source, FailingOnly: f.Failing, CafeID: f.CafeID}, lp.Page)
 	if err != nil {
 		h.ServerError(w, r, err)
+		return
+	}
+	next := lp.Next("/sources", sourcesParams(f), pg.HasMore)
+	if lp.Fragment {
+		h.Render(w, r, http.StatusOK, templates.TargetRows(pg.Items, next, false))
 		return
 	}
 	runs, err := h.Ctl.Source.RecentRuns(r.Context(), 12)
@@ -28,7 +36,19 @@ func renderSources(h *handlers.Handler, w http.ResponseWriter, r *http.Request, 
 		h.ServerError(w, r, err)
 		return
 	}
-	h.Render(w, r, status, templates.SourcesPage(targets, runs, cafes, f, ok, errMsg))
+	h.Render(w, r, status, templates.SourcesPage(pg.Items, next, runs, cafes, f, ok, errMsg))
+}
+
+// sourcesParams are the filters carried through next-page requests.
+func sourcesParams(f templates.SourcesFilter) url.Values {
+	v := url.Values{"source": {f.Source}}
+	if f.Failing {
+		v.Set("failing", "1")
+	}
+	if f.CafeID != 0 {
+		v.Set("cafe", strconv.Itoa(f.CafeID))
+	}
+	return v
 }
 
 func targetFromPath(h *handlers.Handler, w http.ResponseWriter, r *http.Request) (int, string, bool) {

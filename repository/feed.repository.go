@@ -54,14 +54,18 @@ func scanFeed(row pgx.CollectableRow) (models.Feed, error) {
 	return f, err
 }
 
-func (r *FeedRepository) List(ctx context.Context, cafeID int) ([]models.Feed, error) {
+// List returns one page (1-based) of a cafe's feed entries, newest first.
+func (r *FeedRepository) List(ctx context.Context, cafeID, page int) (models.Page[models.Feed], error) {
+	limit, offset := pageWindow(page)
 	rows, err := r.db.Query(ctx, `
-		SELECT `+feedColumns+` FROM cafe_feed WHERE cafe_id = $1 ORDER BY published_at DESC, id DESC
-	`, cafeID)
+		SELECT `+feedColumns+` FROM cafe_feed WHERE cafe_id = $1
+		ORDER BY published_at DESC, id DESC LIMIT $2 OFFSET $3
+	`, cafeID, limit, offset)
 	if err != nil {
-		return nil, err
+		return models.Page[models.Feed]{}, err
 	}
-	return pgx.CollectRows(rows, scanFeed)
+	items, err := pgx.CollectRows(rows, scanFeed)
+	return toPage(items), err
 }
 
 func (r *FeedRepository) Get(ctx context.Context, cafeID, id int) (*models.Feed, error) {

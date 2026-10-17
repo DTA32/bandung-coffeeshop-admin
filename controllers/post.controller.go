@@ -31,20 +31,21 @@ func DecodePost(p models.Proposal) (models.Post, error) {
 	return models.Post{Proposal: p, Value: v}, nil
 }
 
-func (c *PostController) List(ctx context.Context, cafeID int) ([]models.Post, error) {
-	items, err := c.repo.ListPending(ctx, cafeID)
+// List returns one page (1-based) of pending posts, decoded.
+func (c *PostController) List(ctx context.Context, cafeID, page int) (models.Page[models.Post], error) {
+	pg, err := c.repo.ListPendingPage(ctx, cafeID, page)
 	if err != nil {
-		return nil, err
+		return models.Page[models.Post]{}, err
 	}
-	out := make([]models.Post, 0, len(items))
-	for _, p := range items {
+	out := make([]models.Post, 0, len(pg.Items))
+	for _, p := range pg.Items {
 		post, err := DecodePost(p)
 		if err != nil {
-			return nil, err
+			return models.Page[models.Post]{}, err
 		}
 		out = append(out, post)
 	}
-	return out, nil
+	return models.Page[models.Post]{Items: out, HasMore: pg.HasMore}, nil
 }
 
 func (c *PostController) Get(ctx context.Context, id int64) (*models.Post, error) {

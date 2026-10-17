@@ -18,7 +18,19 @@ func NewSourceRepository(db *pgxpool.Pool) *SourceRepository {
 	return &SourceRepository{db: db}
 }
 
+// ListTargets returns every target matching f (used for single-target lookups).
 func (r *SourceRepository) ListTargets(ctx context.Context, f models.TargetFilter) ([]models.SourceTarget, error) {
+	return r.listTargets(ctx, f, nil, 0)
+}
+
+// ListTargetsPage returns one page (1-based) of targets matching f.
+func (r *SourceRepository) ListTargetsPage(ctx context.Context, f models.TargetFilter, page int) (models.Page[models.SourceTarget], error) {
+	limit, offset := pageWindow(page)
+	items, err := r.listTargets(ctx, f, &limit, offset)
+	return toPage(items), err
+}
+
+func (r *SourceRepository) listTargets(ctx context.Context, f models.TargetFilter, limit *int, offset int) ([]models.SourceTarget, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT t.cafe_id, l.id, l.name, t.source::text, t.external_id, t.enabled,
 		       t.last_success_at, t.last_error, t.consecutive_failures, s.id, s.fetched_at
@@ -33,8 +45,9 @@ func (r *SourceRepository) ListTargets(ctx context.Context, f models.TargetFilte
 		WHERE ($1 = '' OR t.source::text = $1)
 		  AND (NOT $2 OR t.consecutive_failures > 0)
 		  AND ($3 = 0 OR t.cafe_id = $3)
-		ORDER BY t.consecutive_failures DESC, l.name, t.source
-	`, f.Source, f.FailingOnly, f.CafeID)
+		ORDER BY t.consecutive_failures DESC, l.name, t.cafe_id, t.source
+		LIMIT $4 OFFSET $5
+	`, f.Source, f.FailingOnly, f.CafeID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

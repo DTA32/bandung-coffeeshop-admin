@@ -16,6 +16,11 @@ func NewRatingTypeController(repo *repository.RatingTypeRepository) *RatingTypeC
 	return &RatingTypeController{repo: repo}
 }
 
+// ListPage returns one page of rating types for the rating types page.
+func (c *RatingTypeController) ListPage(ctx context.Context, page int) (models.Page[models.RatingType], error) {
+	return c.repo.ListPage(ctx, page)
+}
+
 func (c *RatingTypeController) List(ctx context.Context) ([]models.RatingType, error) {
 	return c.repo.List(ctx)
 }

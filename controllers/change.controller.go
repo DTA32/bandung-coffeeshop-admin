@@ -22,13 +22,14 @@ func (c *ChangeController) Get(ctx context.Context, id int64) (*models.Proposal,
 	return c.repo.Get(ctx, id)
 }
 
-// List returns pending field proposals grouped by cafe.
-func (c *ChangeController) List(ctx context.Context, cafeID int) ([]models.CafeProposals, error) {
-	items, err := c.repo.ListPending(ctx, cafeID)
+// List returns one page of pending field proposals grouped by cafe (a page is
+// PageSize cafes; groups are never split).
+func (c *ChangeController) List(ctx context.Context, cafeID, page int) (models.Page[models.CafeProposals], error) {
+	items, more, err := c.repo.ListPendingPage(ctx, cafeID, page)
 	if err != nil {
-		return nil, err
+		return models.Page[models.CafeProposals]{}, err
 	}
-	return GroupByCafe(items), nil
+	return models.Page[models.CafeProposals]{Items: GroupByCafe(items), HasMore: more}, nil
 }
 
 func GroupByCafe(items []models.Proposal) []models.CafeProposals {

@@ -142,7 +142,7 @@ func joinLines(list []string) string {
 	return out
 }
 
-templ FeedListPage(locationID, cafeName string, items []models.Feed, now time.Time, ok string) {
+templ FeedListPage(locationID, cafeName string, items []models.Feed, now time.Time, next, ok string) {
 	@Layout(cafeName+" · feed", NavCafes) {
 		@Page(pageCls) {
 			@BackLink("/cafes/"+locationID, "Back to "+cafeName)
@@ -161,12 +161,18 @@ templ FeedListPage(locationID, cafeName string, items []models.Feed, now time.Ti
 				<p class="m-0 text-sm text-bark">No feed entries yet. Create one here or from a <a class={ inlineLinkCls } href="/posts">new Instagram post</a>.</p>
 			}
 			<div class="flex flex-col gap-3">
-				for _, f := range items {
-					@FeedRow(locationID, f, now)
-				}
+				@FeedRows(locationID, items, now, next)
 			</div>
 		}
 	}
+}
+
+// FeedRows renders feed rows plus the next-page sentinel.
+templ FeedRows(locationID string, items []models.Feed, now time.Time, next string) {
+	for _, f := range items {
+		@FeedRow(locationID, f, now)
+	}
+	@LoadMore(next)
 }
 
 templ FeedRow(locationID string, f models.Feed, now time.Time) {

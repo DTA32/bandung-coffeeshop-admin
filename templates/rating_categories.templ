@@ -3,7 +3,7 @@ package templates
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
 // RatingCategoriesPage ports admin.rating-categories.tsx.
-templ RatingCategoriesPage(types []models.RatingType, cats []models.RatingCategory, errMsg string) {
+templ RatingCategoriesPage(types []models.RatingType, cats []models.RatingCategory, next, errMsg string) {
 	@Layout("Rating categories", NavRatings) {
 		@Page(pageNarrowCls) {
 			@BackLink("/", "Admin home")
@@ -28,12 +28,18 @@ templ RatingCategoriesPage(types []models.RatingType, cats []models.RatingCatego
 				</div>
 			</form>
 			<div class="flex flex-col gap-3">
-				for _, c := range cats {
-					@RatingCategoryRow(c, types, "")
-				}
+				@RatingCategoryRows(cats, types, next)
 			</div>
 		}
 	}
+}
+
+// RatingCategoryRows renders category cards plus the next-page sentinel.
+templ RatingCategoryRows(cats []models.RatingCategory, types []models.RatingType, next string) {
+	for _, c := range cats {
+		@RatingCategoryRow(c, types, "")
+	}
+	@LoadMore(next)
 }
 
 func blankCategory(types []models.RatingType) models.RatingCategory {

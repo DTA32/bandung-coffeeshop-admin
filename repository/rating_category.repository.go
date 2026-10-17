@@ -31,6 +31,26 @@ func (r *RatingCategoryRepository) List(ctx context.Context) ([]models.RatingCat
 	return pgx.CollectRows(rows, scanRatingCategory)
 }
 
+// ListPage returns one page (1-based) of rating categories ordered by type,
+// lower bound (id breaks ties).
+func (r *RatingCategoryRepository) ListPage(ctx context.Context, page int) (models.Page[models.RatingCategory], error) {
+	limit, offset := pageWindow(page)
+	rows, err := r.db.Query(ctx, `
+		SELECT id, type, name, name_indo, slug,
+		       short_description, short_description_indo,
+		       long_description, long_description_indo,
+		       lower_bound::float8, upper_bound::float8
+		FROM rating_category
+		ORDER BY type, lower_bound, id
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return models.Page[models.RatingCategory]{}, err
+	}
+	items, err := pgx.CollectRows(rows, scanRatingCategory)
+	return toPage(items), err
+}
+
 func (r *RatingCategoryRepository) Get(ctx context.Context, id int) (*models.RatingCategory, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, type, name, name_indo, slug,

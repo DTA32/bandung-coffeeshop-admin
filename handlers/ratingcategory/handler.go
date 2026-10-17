@@ -6,6 +6,7 @@ import (
 
 	"github.com/dta32/bandung-coffeeshop-admin/handlers"
 	"github.com/dta32/bandung-coffeeshop-admin/templates"
+	"github.com/dta32/bandung-coffeeshop-admin/utils"
 )
 
 func renderRatings(h *handlers.Handler, w http.ResponseWriter, r *http.Request, status int, errMsg string) {
@@ -14,10 +15,16 @@ func renderRatings(h *handlers.Handler, w http.ResponseWriter, r *http.Request, 
 		h.ServerError(w, r, err)
 		return
 	}
-	cats, err := h.Ctl.RatingCategory.List(r.Context())
+	lp := utils.ParseListParams(r, "")
+	pg, err := h.Ctl.RatingCategory.ListPage(r.Context(), lp.Page)
 	if err != nil {
 		h.ServerError(w, r, err)
 		return
 	}
-	h.Render(w, r, status, templates.RatingCategoriesPage(types, cats, errMsg))
+	next := lp.Next("/rating-categories", nil, pg.HasMore)
+	if lp.Fragment {
+		h.Render(w, r, status, templates.RatingCategoryRows(pg.Items, types, next))
+		return
+	}
+	h.Render(w, r, status, templates.RatingCategoriesPage(types, pg.Items, next, errMsg))
 }

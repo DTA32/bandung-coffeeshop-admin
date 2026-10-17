@@ -2,7 +2,7 @@ package templates
 
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
-templ ChangesPage(groups []models.CafeProposals, cafeFilter int, ok, errMsg string) {
+templ ChangesPage(groups []models.CafeProposals, cafeFilter int, next, ok, errMsg string) {
 	@Layout("Changes", NavChanges) {
 		@Page(pageCls) {
 			@BackLink("/", "Admin home")
@@ -20,34 +20,41 @@ templ ChangesPage(groups []models.CafeProposals, cafeFilter int, ok, errMsg stri
 			if len(groups) == 0 {
 				<p class="m-0 text-sm text-bark">Nothing to review.</p>
 			}
-			for _, g := range groups {
-				<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) }>
-					<div class="flex flex-wrap items-center justify-between gap-2">
-						<div class="flex items-baseline gap-2">
-							<a class="text-base font-bold text-forest hover:underline" href={ templ.URL("/cafes/" + g.LocationID) }>{ g.CafeName }</a>
-							<span class="text-xs text-bark">{ g.LocationID }</span>
-						</div>
-						if hasApplicable(g.Items) {
-							<form
-								method="post"
-								action={ templ.URL("/changes/cafe/" + itoa(g.CafeID) + "/approve-all") }
-							>
-								<button class={ btnOutlineSmCls } type="submit" data-confirm="Approve every proposed value for this cafe as-is?">
-									@Icon("check", 14)
-									Approve all
-								</button>
-							</form>
-						}
-					</div>
-					<div class="flex flex-col">
-						for _, p := range g.Items {
-							@ProposalRow(p, "")
-						}
-					</div>
-				</section>
-			}
+			@ChangeGroups(groups, next)
 		}
 	}
+}
+
+// ChangeGroups renders cafe groups of proposals plus the next-page sentinel
+// (full page and fragment responses).
+templ ChangeGroups(groups []models.CafeProposals, next string) {
+for _, g := range groups {
+	<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) }>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<div class="flex items-baseline gap-2">
+				<a class="text-base font-bold text-forest hover:underline" href={ templ.URL("/cafes/" + g.LocationID) }>{ g.CafeName }</a>
+				<span class="text-xs text-bark">{ g.LocationID }</span>
+			</div>
+			if hasApplicable(g.Items) {
+				<form
+					method="post"
+					action={ templ.URL("/changes/cafe/" + itoa(g.CafeID) + "/approve-all") }
+				>
+					<button class={ btnOutlineSmCls } type="submit" data-confirm="Approve every proposed value for this cafe as-is?">
+						@Icon("check", 14)
+						Approve all
+					</button>
+				</form>
+			}
+		</div>
+		<div class="flex flex-col">
+			for _, p := range g.Items {
+				@ProposalRow(p, "")
+			}
+		</div>
+	</section>
+}
+	@LoadMore(next)
 }
 
 func hasApplicable(items []models.Proposal) bool {
