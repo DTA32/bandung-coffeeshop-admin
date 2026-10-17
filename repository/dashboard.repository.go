@@ -25,8 +25,10 @@ func (r *DashboardRepository) Counts(ctx context.Context) (*models.Dashboard, er
 			(SELECT COUNT(*) FROM cafe c JOIN location l ON l.id = c.location_id WHERE l.status <> 'deleted'),
 			(SELECT COUNT(*) FROM change_proposal WHERE status = 'pending' AND field <> 'ig_post'),
 			(SELECT COUNT(*) FROM change_proposal WHERE status = 'pending' AND field = 'ig_post'),
-			(SELECT COUNT(*) FROM source_target WHERE enabled AND consecutive_failures >= 3)
-	`).Scan(&d.Cafes, &d.PendingChanges, &d.PendingPosts, &d.FailingTargets)
+			(SELECT COUNT(*) FROM source_target WHERE enabled AND consecutive_failures >= 3),
+			(SELECT COUNT(*) FROM users WHERE status = 'active'),
+			(SELECT COUNT(*) FROM users WHERE status = 'deleted')
+	`).Scan(&d.Cafes, &d.PendingChanges, &d.PendingPosts, &d.FailingTargets, &d.ActiveUsers, &d.DeletedUsers)
 	if err != nil {
 		return nil, err
 	}

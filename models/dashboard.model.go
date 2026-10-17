@@ -5,5 +5,7 @@ type Dashboard struct {
 	PendingChanges int
 	PendingPosts   int
 	FailingTargets int
+	ActiveUsers    int
+	DeletedUsers   int
 	LastRuns       []ScrapeRun
 }
