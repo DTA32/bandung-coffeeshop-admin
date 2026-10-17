@@ -115,9 +115,9 @@ covered by the gated `repository` integration tests.
 - `/posts` — pending `ig_post` proposals: "Create feed for this cafe" (prefilled form) or "Ignore"
 - `/sources` — `source_target` per cafe × source (enable, external id override/clear, reset failures),
   recent `scrape_run`s, `/snapshots/{id}` raw/parsed view
-- `/users` — public-site accounts (BCF-27): server-side search on name / email (ILIKE, wildcards escaped), status
-  tabs all / active / deleted, newest first, 50 per page; HTMX requests (not history restores) get only the
-  `UserResults` fragment. `POST /users/{id}/delete` / `revive` only set `users.status` (no-op if unchanged) and
+- `/users` — public-site accounts (BCF-27): typeahead search on name / email (ILIKE via `EscapeLike`), status
+  tabs all / active / deleted, newest first, infinite scroll like every list (see below). The typeahead and tabs
+  target `#user-list` and get the `UserResults` fragment (tabs + table); the scroll sentinel gets `UserRows`. `POST /users/{id}/delete` / `revive` only set `users.status` (no-op if unchanged) and
   return the row. The BE checks `users.status` on every request (deleted = logged out at once) and hides a deleted
   user's reviews at read time, so this app never touches Redis sessions or reviews
 

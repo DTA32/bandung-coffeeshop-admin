@@ -20,7 +20,7 @@ func NewUserController(repo *repository.UserRepository) *UserController {
 	return &UserController{repo: repo}
 }
 
-func (c *UserController) List(ctx context.Context, p models.UserListParams) (*models.UserPage, error) {
+func (c *UserController) List(ctx context.Context, p models.UserListParams) (models.Page[models.User], error) {
 	return c.repo.List(ctx, NormalizeUserListParams(p))
 }
 
