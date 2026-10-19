@@ -30,6 +30,7 @@ templ DashboardPage(d *models.Dashboard) {
 				@freshnessCard("/changes", "Changes", "Review field changes the scraper found on Google Maps, Instagram and Linktree.", "list-checks", d.PendingChanges, "pending")
 				@freshnessCard("/posts", "Instagram posts", "Turn new Instagram posts into cafe feed entries, or ignore them.", "image", d.PendingPosts, "pending")
 				@freshnessCard("/sources?failing=1", "Sources", "Enable, override or reset what the scraper fetches per cafe.", "activity", d.FailingTargets, "failing")
+				@freshnessCard("/reviews", "Reviews", "Approve or reject user reviews, pin them, fix ratings and add partnership reviews.", "message-square", d.PendingReviews, "pending")
 				@usersCard(d.ActiveUsers, d.DeletedUsers)
 				for _, s := range consoleSections {
 					@homeCard(s.href, s.title, s.desc, s.icon)
