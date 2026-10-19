@@ -32,26 +32,6 @@ type CafePrice struct {
 	FoodPriceMax   *int
 }
 
-// Review is the single editable review for a cafe. ID is set when the row
-// already exists so an update targets it instead of inserting a new one.
-type Review struct {
-	ID            *int
-	IsSubjective  bool
-	OverallScore  *float64
-	WFCScore      *float64
-	PersonalScore *float64
-	Content       *string
-	ContentIndo   *string
-	VisitedAt     *string // YYYY-MM-DD
-}
-
-type Rating struct {
-	CategoryType                 string
-	Score                        float64
-	ShortDescriptionOverride     *string
-	ShortDescriptionOverrideIndo *string
-}
-
 type CafeTag struct {
 	TagID     int
 	Visible   bool
@@ -64,7 +44,7 @@ type Cafe struct {
 	ID              string // location id (slug)
 	CafeID          int
 	Name            string
-	Description     string // also holds the address (see 002_cafe_seeder.py)
+	Description     string // location.description: holds the address (see 002_cafe_seeder.py)
 	DescriptionIndo string
 	GmapsID         *string
 	Status          string
@@ -76,18 +56,16 @@ type Cafe struct {
 	IsFeatured      bool
 	Weather         []string
 	Coordinates     *Coordinates
+	About           *string // cafe.description: the "About this cafe" blurb (EN)
+	AboutIndo       *string // cafe.description_indo
 	Price           CafePrice
-	Review          *Review
-	Ratings         []Rating
 	Tags            []CafeTag
 	Images          []Image
 }
 
 // CafeFormOptions is the reference data the cafe form needs.
 type CafeFormOptions struct {
-	Tags             []Tag
-	RatingTypes      []RatingType
-	RatingCategories []RatingCategory
+	Tags []Tag
 }
 
 // Weathers mirrors constants.Weather* in bandung-coffeeshop-be and the

@@ -11,7 +11,7 @@ import (
 )
 
 // CafeRepository owns the cafe aggregate: location (type cafe) + cafe + price,
-// review, ratings, tags and images. Queries are ported from
+// tags and images. Reviews and their ratings belong to ReviewRepository. Queries are ported from
 // bandung-coffeeshop-be-console@252f8ed repository/admin_*.go.
 type CafeRepository struct {
 	db *pgxpool.Pool
@@ -85,7 +85,7 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 		       ST_Y(ST_Centroid(l.coordinates)), ST_X(ST_Centroid(l.coordinates)),
 		       c.id, c.instagram, c.phone, c.menu,
 		       TO_CHAR(c.open_hour, 'HH24:MI'), TO_CHAR(c.close_hour, 'HH24:MI'),
-		       c.is_featured, c.weather
+		       c.is_featured, c.weather, c.description, c.description_indo
 		FROM location l
 		JOIN cafe c ON c.location_id = l.id
 		WHERE l.id = $1 AND l.type = 'cafe'
@@ -93,7 +93,7 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 		&p.ID, &p.Name, &p.Description, &p.DescriptionIndo, &p.GmapsID, &p.Status,
 		&lat, &lng,
 		&p.CafeID, &p.Instagram, &p.Phone, &p.Menu, &p.OpenHour, &p.CloseHour,
-		&p.IsFeatured, &p.Weather,
+		&p.IsFeatured, &p.Weather, &p.About, &p.AboutIndo,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
@@ -119,41 +119,7 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 		return nil, err
 	}
 
-	var rv models.Review
-	err = r.db.QueryRow(ctx, `
-		SELECT id, is_subjective, overall_score::float8, wfc_score::float8, personal_score::float8,
-		       content, content_indo, visited_at::text
-		FROM cafe_review
-		WHERE cafe_id = $1
-		ORDER BY COALESCE(visited_at, created_at::date) DESC, id DESC
-		LIMIT 1
-	`, p.CafeID).Scan(
-		&rv.ID, &rv.IsSubjective, &rv.OverallScore, &rv.WFCScore,
-		&rv.PersonalScore, &rv.Content, &rv.ContentIndo, &rv.VisitedAt,
-	)
-	if err == nil {
-		p.Review = &rv
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
-	}
-
-	rows, err := r.db.Query(ctx, `
-		SELECT category_type, score::float8, short_description_override, short_description_override_indo
-		FROM cafe_rating WHERE cafe_id = $1 ORDER BY category_type
-	`, p.CafeID)
-	if err != nil {
-		return nil, err
-	}
-	p.Ratings, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.Rating, error) {
-		var rt models.Rating
-		err := row.Scan(&rt.CategoryType, &rt.Score, &rt.ShortDescriptionOverride, &rt.ShortDescriptionOverrideIndo)
-		return rt, err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err = r.db.Query(ctx, `SELECT tag_id, visible, updated_at FROM cafe_tag WHERE cafe_id = $1 ORDER BY tag_id`, p.CafeID)
+	rows, err := r.db.Query(ctx, `SELECT tag_id, visible, updated_at FROM cafe_tag WHERE cafe_id = $1 ORDER BY tag_id`, p.CafeID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,10 +167,12 @@ func (r *CafeRepository) Create(ctx context.Context, p models.Cafe) error {
 
 	var cafeID int
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO cafe (location_id, instagram, phone, menu, open_hour, close_hour, is_featured, weather)
-		VALUES ($1, $2, $3, $4, $5::time, $6::time, $7, $8)
+		INSERT INTO cafe (location_id, instagram, phone, menu, open_hour, close_hour, is_featured, weather,
+			description, description_indo)
+		VALUES ($1, $2, $3, $4, $5::time, $6::time, $7, $8, $9, $10)
 		RETURNING id
-	`, p.ID, p.Instagram, p.Phone, p.Menu, p.OpenHour, p.CloseHour, p.IsFeatured, p.Weather).Scan(&cafeID); err != nil {
+	`, p.ID, p.Instagram, p.Phone, p.Menu, p.OpenHour, p.CloseHour, p.IsFeatured, p.Weather,
+		p.About, p.AboutIndo).Scan(&cafeID); err != nil {
 		return err
 	}
 
@@ -249,9 +217,10 @@ func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) e
 	if _, err := tx.Exec(ctx, `
 		UPDATE cafe SET
 			instagram = $2, phone = $3, menu = $4, open_hour = $5::time, close_hour = $6::time,
-			is_featured = $7, weather = $8, updated_at = NOW()
+			is_featured = $7, weather = $8, description = $9, description_indo = $10, updated_at = NOW()
 		WHERE id = $1
-	`, cafeID, p.Instagram, p.Phone, p.Menu, p.OpenHour, p.CloseHour, p.IsFeatured, p.Weather); err != nil {
+	`, cafeID, p.Instagram, p.Phone, p.Menu, p.OpenHour, p.CloseHour, p.IsFeatured, p.Weather,
+		p.About, p.AboutIndo); err != nil {
 		return err
 	}
 
@@ -302,8 +271,8 @@ func coordArgs(c *models.Coordinates) (*float64, *float64) {
 	return &lng, &lat
 }
 
-// writeCafeChildren upserts price/review/ratings/tags/images for a cafe,
-// deleting ratings, tags and images absent from the payload.
+// writeCafeChildren upserts price/tags/images for a cafe, deleting tags and
+// images absent from the payload. Reviews and ratings are never touched here.
 func writeCafeChildren(ctx context.Context, tx pgx.Tx, locationID string, cafeID int, p models.Cafe) error {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO cafe_price (cafe_id, price_range_min, price_range_max,
@@ -326,52 +295,6 @@ func writeCafeChildren(ctx context.Context, tx pgx.Tx, locationID string, cafeID
 		p.Price.SnackPriceMin, p.Price.SnackPriceMax,
 		p.Price.FoodPriceMin, p.Price.FoodPriceMax,
 	); err != nil {
-		return err
-	}
-
-	if rv := p.Review; rv != nil {
-		if rv.ID != nil {
-			if _, err := tx.Exec(ctx, `
-				UPDATE cafe_review SET
-					is_subjective = $2, overall_score = $3, wfc_score = $4,
-					personal_score = $5, content = $6, content_indo = $7,
-					visited_at = $8::date, updated_at = NOW()
-				WHERE id = $1 AND cafe_id = $9
-			`, *rv.ID, rv.IsSubjective, rv.OverallScore, rv.WFCScore,
-				rv.PersonalScore, rv.Content, rv.ContentIndo, rv.VisitedAt, cafeID); err != nil {
-				return err
-			}
-		} else {
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO cafe_review (cafe_id, is_subjective, overall_score,
-					wfc_score, personal_score, content, content_indo, visited_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date)
-			`, cafeID, rv.IsSubjective, rv.OverallScore, rv.WFCScore,
-				rv.PersonalScore, rv.Content, rv.ContentIndo, rv.VisitedAt); err != nil {
-				return err
-			}
-		}
-	}
-
-	types := make([]string, 0, len(p.Ratings))
-	for _, rt := range p.Ratings {
-		types = append(types, rt.CategoryType)
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO cafe_rating (cafe_id, category_type, score,
-				short_description_override, short_description_override_indo)
-			VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT (cafe_id, category_type) DO UPDATE SET
-				score = EXCLUDED.score,
-				short_description_override = EXCLUDED.short_description_override,
-				short_description_override_indo = EXCLUDED.short_description_override_indo,
-				updated_at = NOW()
-		`, cafeID, rt.CategoryType, rt.Score, rt.ShortDescriptionOverride, rt.ShortDescriptionOverrideIndo); err != nil {
-			return err
-		}
-	}
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM cafe_rating WHERE cafe_id = $1 AND category_type <> ALL($2::text[])
-	`, cafeID, types); err != nil {
 		return err
 	}
 

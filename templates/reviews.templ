@@ -1,0 +1,123 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// RatingsEditor is a review's ratings: one box per rating type with an enable
+// checkbox, the type's bucket legend, a score input bounded by the buckets and
+// optional EN / ID short-description overrides (static/js/forms.js enables the
+// inputs when the box is ticked). Moved from the cafe form when ratings became
+// per review (BCF-29 / BCF-31).
+templ RatingsEditor(ratings []models.Rating, types []models.RatingType, cats []models.RatingCategory) {
+	<section class={ cardCls }>
+		<h2 class={ sectionTitle }>Ratings</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			for _, rt := range types {
+				<div class="flex flex-col gap-2 rounded-xl border border-grove-light p-3" data-rating>
+					<label class="flex items-center gap-2">
+						<input type="checkbox" name={ "rating_enabled_" + rt.Type } value="1" checked?={ findRating(ratings, rt.Type) != nil } data-rating-toggle/>
+						<span class="text-sm font-semibold text-forest">{ rt.Label }</span>
+					</label>
+					if b := ratingBuckets(cats, rt.Type); b != "" {
+						<span class="text-[11px] text-bark">{ b }</span>
+					}
+					<div class="flex gap-2">
+						<input
+							type="number"
+							step="any"
+							min={ fmtFloat(bucketMin(cats, rt.Type)) }
+							max={ fmtFloat(bucketMax(cats, rt.Type)) }
+							disabled?={ findRating(ratings, rt.Type) == nil }
+							placeholder={ "score " + fmtFloat(bucketMin(cats, rt.Type)) + "–" + fmtFloat(bucketMax(cats, rt.Type)) }
+							class={ inputCls, "w-32 min-w-0 disabled:opacity-40" }
+							name={ "rating_score_" + rt.Type }
+							value={ ratingScore(ratings, rt.Type) }
+							aria-label={ rt.Label + " score" }
+						/>
+						<input
+							type="text"
+							disabled?={ findRating(ratings, rt.Type) == nil }
+							placeholder="override EN (optional)"
+							class={ inputCls, "min-w-0 flex-1 disabled:opacity-40" }
+							name={ "rating_override_" + rt.Type }
+							value={ ratingOverride(ratings, rt.Type, false) }
+							aria-label={ rt.Label + " override EN" }
+						/>
+						<input
+							type="text"
+							disabled?={ findRating(ratings, rt.Type) == nil }
+							placeholder="override ID (optional)"
+							class={ inputCls, "min-w-0 flex-1 disabled:opacity-40" }
+							name={ "rating_override_indo_" + rt.Type }
+							value={ ratingOverride(ratings, rt.Type, true) }
+							aria-label={ rt.Label + " override ID" }
+						/>
+					</div>
+				</div>
+			}
+		</div>
+	</section>
+}
+
+func findRating(ratings []models.Rating, t string) *models.Rating {
+	for i := range ratings {
+		if ratings[i].CategoryType == t {
+			return &ratings[i]
+		}
+	}
+	return nil
+}
+
+func ratingScore(ratings []models.Rating, t string) string {
+	if r := findRating(ratings, t); r != nil {
+		return fmtFloat(r.Score)
+	}
+	return ""
+}
+
+func ratingOverride(ratings []models.Rating, t string, indo bool) string {
+	r := findRating(ratings, t)
+	if r == nil {
+		return ""
+	}
+	if indo {
+		return deref(r.ShortDescriptionOverrideIndo)
+	}
+	return deref(r.ShortDescriptionOverride)
+}
+
+func ratingBuckets(cats []models.RatingCategory, t string) string {
+	out := ""
+	for _, c := range cats {
+		if c.Type != t {
+			continue
+		}
+		if out != "" {
+			out += ", "
+		}
+		out += c.Name + " (" + fmtFloat(c.LowerBound) + "–" + fmtFloat(c.UpperBound) + ")"
+	}
+	return out
+}
+
+// bucketMin / bucketMax: the score range follows the dimension's own bounds
+// (e.g. price-rank spans 0..100000), not a fixed 0–5.
+func bucketMin(cats []models.RatingCategory, t string) float64 {
+	found, out := false, 0.0
+	for _, c := range cats {
+		if c.Type == t && (!found || c.LowerBound < out) {
+			found, out = true, c.LowerBound
+		}
+	}
+	return out
+}
+
+func bucketMax(cats []models.RatingCategory, t string) float64 {
+	found, out := false, 5.0
+	for _, c := range cats {
+		if c.Type == t && (!found || c.UpperBound > out) {
+			found, out = true, c.UpperBound
+		}
+	}
+	return out
+}
+

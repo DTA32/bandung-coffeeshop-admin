@@ -16,6 +16,7 @@ func TestNormalizeCafe(t *testing.T) {
 		Phone:     ptr("  "),
 		OpenHour:  ptr("08:00"),
 		CloseHour: ptr(""),
+		About:     ptr("  "),
 		Images:    []models.Image{{URL: " https://a/1.jpg "}, {URL: ""}},
 	}
 	if err := NormalizeCafe(&c); err != nil {
@@ -26,6 +27,9 @@ func TestNormalizeCafe(t *testing.T) {
 	}
 	if c.Weather == nil || len(c.Weather) != 0 {
 		t.Fatalf("weather must default to an empty, non-nil slice (column is NOT NULL)")
+	}
+	if c.About != nil {
+		t.Fatalf("blank about must become NULL: %q", *c.About)
 	}
 	if len(c.Images) != 1 || c.Images[0].URL != "https://a/1.jpg" {
 		t.Fatalf("images: %+v", c.Images)
@@ -43,7 +47,6 @@ func TestNormalizeCafe(t *testing.T) {
 		{"bad menu", func(c *models.Cafe) { c.Menu = ptr("drive.google.com/x") }, "menu must be"},
 		{"bad menu gallery", func(c *models.Cafe) { c.Menu = ptr("#image-0") }, "menu must be"},
 		{"bad coords", func(c *models.Cafe) { c.Coordinates = &models.Coordinates{Lat: 100} }, "invalid coordinates"},
-		{"bad score", func(c *models.Cafe) { c.Review = &models.Review{OverallScore: ptr(5.5)} }, "between 0 and 5"},
 		{"dup tag", func(c *models.Cafe) { c.Tags = []models.CafeTag{{TagID: 1}, {TagID: 1}} }, "duplicate tag"},
 		{"dup image", func(c *models.Cafe) { c.Images = []models.Image{{URL: "https://x"}, {URL: "https://x"}} }, "duplicate image"},
 	}
@@ -56,23 +59,5 @@ func TestNormalizeCafe(t *testing.T) {
 				t.Fatalf("got %v, want validation error containing %q", err, tc.want)
 			}
 		})
-	}
-}
-
-func TestValidateRatings(t *testing.T) {
-	bounds := map[string]models.RatingBounds{
-		"wifi":       {Min: ptr(0.0), Max: ptr(5.0)},
-		"price-rank": {Min: ptr(0.0), Max: ptr(100000.0)},
-		"new":        {},
-	}
-	ok := []models.Rating{{CategoryType: "wifi", Score: 5}, {CategoryType: "price-rank", Score: 45000}, {CategoryType: "new", Score: 999}}
-	if err := ValidateRatings(ok, bounds); err != nil {
-		t.Fatal(err)
-	}
-	if err := ValidateRatings([]models.Rating{{CategoryType: "wifi", Score: 6}}, bounds); err == nil {
-		t.Fatal("expected out of bounds")
-	}
-	if err := ValidateRatings([]models.Rating{{CategoryType: "nope", Score: 1}}, bounds); err == nil {
-		t.Fatal("expected unknown type")
 	}
 }

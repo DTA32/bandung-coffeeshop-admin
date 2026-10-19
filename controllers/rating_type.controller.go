@@ -56,3 +56,18 @@ func NormalizeRatingType(rt *models.RatingType) error {
 	}
 	return nil
 }
+
+// ValidateRatings enforces each dimension's own range (e.g. price-rank spans
+// 0..100000); types without buckets have no range to check against.
+func ValidateRatings(ratings []models.Rating, bounds map[string]models.RatingBounds) error {
+	for _, rt := range ratings {
+		b, ok := bounds[rt.CategoryType]
+		if !ok {
+			return invalid("invalid rating type %q", rt.CategoryType)
+		}
+		if b.Min != nil && b.Max != nil && (rt.Score < *b.Min || rt.Score > *b.Max) {
+			return invalid("%s score %g is outside %g–%g", rt.CategoryType, rt.Score, *b.Min, *b.Max)
+		}
+	}
+	return nil
+}

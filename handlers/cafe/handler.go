@@ -14,13 +14,7 @@ import (
 func cafeOptions(h *handlers.Handler, r *http.Request) (models.CafeFormOptions, error) {
 	var opts models.CafeFormOptions
 	var err error
-	if opts.Tags, err = h.Ctl.Tag.List(r.Context()); err != nil {
-		return opts, err
-	}
-	if opts.RatingTypes, err = h.Ctl.RatingType.List(r.Context()); err != nil {
-		return opts, err
-	}
-	opts.RatingCategories, err = h.Ctl.RatingCategory.List(r.Context())
+	opts.Tags, err = h.Ctl.Tag.List(r.Context())
 	return opts, err
 }
 
@@ -34,7 +28,7 @@ func saveCafe(h *handlers.Handler, w http.ResponseWriter, r *http.Request, isNew
 		h.ServerError(w, r, err)
 		return
 	}
-	c, err := ParseCafeForm(r.PostForm, opts.RatingTypes)
+	c, err := ParseCafeForm(r.PostForm)
 	if err == nil {
 		if isNew {
 			err = h.Ctl.Cafe.Create(r.Context(), &c)
