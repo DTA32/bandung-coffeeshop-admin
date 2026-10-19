@@ -10,6 +10,11 @@ import (
 // ReviewRoutes registers the review endpoints.
 func ReviewRoutes(mux *http.ServeMux, h *handlers.Handler) {
 	mux.Handle("GET /reviews", review.NewGetReviewsHandler(h))
+	mux.Handle("GET /reviews/new", review.NewGetReviewNewHandler(h))
+	mux.Handle("POST /reviews/new", review.NewPostReviewNewHandler(h))
+	mux.Handle("GET /reviews/{id}/edit", review.NewGetReviewEditHandler(h))
+	mux.Handle("POST /reviews/{id}/edit", review.NewPostReviewEditHandler(h))
+	mux.Handle("POST /reviews/{id}/remove", review.NewPostReviewRemoveHandler(h))
 	mux.Handle("POST /reviews/{id}/approve", review.NewPostReviewApproveHandler(h))
 	mux.Handle("POST /reviews/{id}/reject", review.NewPostReviewRejectHandler(h))
 	mux.Handle("POST /reviews/{id}/pin", review.NewPostReviewPinHandler(h))

@@ -40,3 +40,36 @@ func ParseRatings(v url.Values, types []models.RatingType) ([]models.Rating, err
 	}
 	return out, firstErr
 }
+
+// ParsePartnershipForm maps the partnership review form onto a review
+// (user_id stays nil). It always returns the best-effort payload so the form
+// can be re-rendered with the user's input; normalisation and the remaining
+// validation happen in controllers.NormalizePartnershipReview.
+func ParsePartnershipForm(v url.Values, types []models.RatingType) (models.Review, error) {
+	rv := models.Review{
+		ReviewerName:     v.Get("reviewer_name"),
+		Content:          handlers.OptString(v, "content"),
+		VisitedAt:        handlers.OptString(v, "visited_month"),
+		ExternalURLTitle: handlers.OptString(v, "external_url_title"),
+		ExternalURLLink:  handlers.OptString(v, "external_url_link"),
+		IsPinned:         handlers.Checked(v, "is_pinned"),
+	}
+	var firstErr error
+	keep := func(err error) {
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	cafeID, err := handlers.OptInt(v, "cafe_id")
+	keep(err)
+	if cafeID != nil {
+		rv.CafeID = *cafeID
+	}
+	rv.OverallScore, err = handlers.OptFloat(v, "overall_score")
+	keep(err)
+	rv.WFCScore, err = handlers.OptFloat(v, "wfc_score")
+	keep(err)
+	rv.Ratings, err = ParseRatings(v, types)
+	keep(err)
+	return rv, firstErr
+}

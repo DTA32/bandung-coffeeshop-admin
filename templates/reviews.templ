@@ -435,3 +435,119 @@ func externalTitle(rv models.Review) string {
 	}
 	return deref(rv.ExternalURLLink)
 }
+
+// PartnershipFormPage creates (rv.ID == 0) or edits a partnership review:
+// admin-entered, no account (user_id NULL), saved approved. Editing bumps
+// updated_at like an author's edit would.
+templ PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg string) {
+	@Layout(partnershipTitle(rv), NavReviews) {
+		@Page(pageCls) {
+			@BackLink("/reviews?status="+partnershipBackStatus(rv), "Back to reviews")
+			<h1 class={ h1Cls }>{ partnershipTitle(rv) }</h1>
+			<p class={ introCls }>Partnership reviews have no user account and are published (approved) as soon as they are saved.</p>
+			<form method="post" action={ templ.URL(partnershipAction(rv)) } class="flex flex-col gap-6">
+				@Notice("", errMsg)
+				<section class={ cardCls }>
+					<h2 class={ sectionTitle }>Review</h2>
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						@Field("Cafe") {
+							<select class={ inputCls } name="cafe_id" required>
+								<option value="">Choose a cafe…</option>
+								for _, c := range opts.Cafes {
+									<option value={ itoa(c.CafeID) } selected?={ c.CafeID == rv.CafeID }>{ c.Name }</option>
+								}
+							</select>
+						}
+						@Field("Reviewer name") {
+							<input class={ inputCls } name="reviewer_name" value={ rv.ReviewerName } required placeholder="e.g. Kopi Club Bandung"/>
+						}
+					</div>
+					@Field("Content") {
+						<textarea class={ inputCls } rows="8" name="content" required>{ deref(rv.Content) }</textarea>
+					}
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+						@Field("Overall score (1–5, optional)") {
+							<input type="number" step="0.1" min="1" max="5" class={ inputCls } name="overall_score" value={ floatStr(rv.OverallScore) }/>
+						}
+						@Field("WFC score (1–5, optional)") {
+							<input type="number" step="0.1" min="1" max="5" class={ inputCls } name="wfc_score" value={ floatStr(rv.WFCScore) }/>
+						}
+						@Field("Visit month (optional)") {
+							<input type="month" class={ inputCls } name="visited_month" value={ monthInput(rv.VisitedAt) }/>
+						}
+					</div>
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						@Field("External link title (optional)") {
+							<input class={ inputCls } name="external_url_title" value={ deref(rv.ExternalURLTitle) } placeholder="Read the full review on Instagram"/>
+						}
+						@Field("External link (optional)") {
+							<input type="url" class={ inputCls } name="external_url_link" value={ deref(rv.ExternalURLLink) } placeholder="https://..."/>
+						}
+					</div>
+					<label class={ checkRowCls }>
+						<input type="checkbox" name="is_pinned" value="1" checked?={ rv.IsPinned }/>
+						<span class={ checkTextCls }>Pinned (shown first on the cafe page)</span>
+					</label>
+				</section>
+				@RatingsEditor(rv.Ratings, opts.RatingTypes, opts.RatingCategories)
+				<div class="flex items-center justify-between">
+					<div>
+						if rv.ID != 0 {
+							<button
+								type="submit"
+								formaction={ templ.URL("/reviews/" + itoa(rv.ID) + "/remove") }
+								formnovalidate
+								data-confirm="Remove this partnership review? It disappears from the site."
+								class={ btnDeleteCls }
+							>
+								@Icon("trash-2", 14)
+								Remove
+							</button>
+						}
+					</div>
+					<div class="flex gap-2">
+						<a href={ templ.URL("/reviews?status=" + partnershipBackStatus(rv)) } class={ btnCancelCls }>Cancel</a>
+						<button type="submit" class={ btnSubmitCls } data-saving-label="Saving...">{ partnershipSubmit(rv) }</button>
+					</div>
+				</div>
+			</form>
+		}
+	}
+}
+
+func partnershipTitle(rv models.Review) string {
+	if rv.ID == 0 {
+		return "New partnership review"
+	}
+	return "Edit partnership review"
+}
+
+func partnershipAction(rv models.Review) string {
+	if rv.ID == 0 {
+		return "/reviews/new"
+	}
+	return "/reviews/" + itoa(rv.ID) + "/edit"
+}
+
+func partnershipSubmit(rv models.Review) string {
+	if rv.ID == 0 {
+		return "Publish review"
+	}
+	return "Save"
+}
+
+func partnershipBackStatus(rv models.Review) string {
+	if rv.Status == "" {
+		return models.ReviewStatusApproved
+	}
+	return rv.Status
+}
+
+// monthInput renders visited_at ("2026-09-01", or the raw "2026-09" a failed
+// submit echoes back) for <input type="month">.
+func monthInput(s *string) string {
+	if s == nil || len(*s) < 7 {
+		return ""
+	}
+	return (*s)[:7]
+}
