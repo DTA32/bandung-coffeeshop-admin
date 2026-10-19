@@ -15,6 +15,9 @@ var (
 	ErrIDExists           = repository.ErrIDExists
 	ErrRatingTypeInUse    = repository.ErrRatingTypeInUse
 	ErrProposalNotPending = repository.ErrProposalNotPending
+	ErrReviewStateChanged = repository.ErrReviewStateChanged
+	ErrUnknownCafe        = repository.ErrUnknownCafe
+	ErrRatingTaken        = repository.ErrRatingTaken
 )
 
 // ValidationError is shown to the admin next to the form.
@@ -32,7 +35,10 @@ func IsValidation(err error) bool {
 	return errors.As(err, &v) ||
 		errors.Is(err, ErrIDExists) ||
 		errors.Is(err, ErrRatingTypeInUse) ||
-		errors.Is(err, ErrProposalNotPending)
+		errors.Is(err, ErrProposalNotPending) ||
+		errors.Is(err, ErrReviewStateChanged) ||
+		errors.Is(err, ErrUnknownCafe) ||
+		errors.Is(err, ErrRatingTaken)
 }
 
 func IsNotFound(err error) bool {
