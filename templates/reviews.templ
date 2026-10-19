@@ -17,7 +17,7 @@ templ RatingsEditor(ratings []models.Rating, types []models.RatingType, cats []m
 	<section class={ cardCls }>
 		<h2 class={ sectionTitle }>Ratings</h2>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-			for _, rt := range types {
+			for _, rt := range ratableTypes(types, cats) {
 				<div class="flex flex-col gap-2 rounded-xl border border-grove-light p-3" data-rating>
 					<label class="flex items-center gap-2">
 						<input type="checkbox" name={ "rating_enabled_" + rt.Type } value="1" checked?={ findRating(ratings, rt.Type) != nil } data-rating-toggle/>
@@ -62,6 +62,18 @@ templ RatingsEditor(ratings []models.Rating, types []models.RatingType, cats []m
 			}
 		</div>
 	</section>
+}
+
+// ratableTypes drops rating types that have no categories (buckets) yet: they
+// have no score range, so ValidateRatings would reject them.
+func ratableTypes(types []models.RatingType, cats []models.RatingCategory) []models.RatingType {
+	out := make([]models.RatingType, 0, len(types))
+	for _, rt := range types {
+		if ratingBuckets(cats, rt.Type) != "" {
+			out = append(out, rt)
+		}
+	}
+	return out
 }
 
 func findRating(ratings []models.Rating, t string) *models.Rating {

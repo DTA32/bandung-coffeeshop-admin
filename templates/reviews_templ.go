@@ -86,7 +86,7 @@ func RatingsEditor(ratings []models.Rating, types []models.RatingType, cats []mo
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, rt := range types {
+		for _, rt := range ratableTypes(types, cats) {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"flex flex-col gap-2 rounded-xl border border-grove-light p-3\" data-rating><label class=\"flex items-center gap-2\"><input type=\"checkbox\" name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -411,6 +411,18 @@ func RatingsEditor(ratings []models.Rating, types []models.RatingType, cats []mo
 	})
 }
 
+// ratableTypes drops rating types that have no categories (buckets) yet: they
+// have no score range, so ValidateRatings would reject them.
+func ratableTypes(types []models.RatingType, cats []models.RatingCategory) []models.RatingType {
+	out := make([]models.RatingType, 0, len(types))
+	for _, rt := range types {
+		if ratingBuckets(cats, rt.Type) != "" {
+			out = append(out, rt)
+		}
+	}
+	return out
+}
+
 func findRating(ratings []models.Rating, t string) *models.Rating {
 	for i := range ratings {
 		if ratings[i].CategoryType == t {
@@ -657,7 +669,7 @@ func ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListI
 					var templ_7745c5c3_Var36 string
 					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Status)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 188, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 200, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 					if templ_7745c5c3_Err != nil {
@@ -698,7 +710,7 @@ func ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListI
 					var templ_7745c5c3_Var39 string
 					templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(c.CafeID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 193, Col: 36}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 205, Col: 36}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
 					if templ_7745c5c3_Err != nil {
@@ -721,7 +733,7 @@ func ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListI
 					var templ_7745c5c3_Var40 string
 					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 193, Col: 82}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 205, Col: 82}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 					if templ_7745c5c3_Err != nil {
@@ -825,7 +837,7 @@ func ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListI
 					var templ_7745c5c3_Var48 templ.SafeURL
 					templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(reviewsURL(f, s)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 205, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 217, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 					if templ_7745c5c3_Err != nil {
@@ -861,7 +873,7 @@ func ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListI
 					var templ_7745c5c3_Var50 string
 					templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(reviewTabLabels[s])
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 210, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 222, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 					if templ_7745c5c3_Err != nil {
@@ -884,7 +896,7 @@ func ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListI
 					var templ_7745c5c3_Var51 string
 					templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(lower(reviewTabLabels[f.Status]))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 214, Col: 74}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 226, Col: 74}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 					if templ_7745c5c3_Err != nil {
@@ -1002,7 +1014,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.ResolveAttributeValue("review-" + itoa(rv.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 239, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 251, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var55)
 			if templ_7745c5c3_Err != nil {
@@ -1028,7 +1040,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var57 templ.SafeURL
 			templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/cafes/" + rv.LocationID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 242, Col: 109}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 254, Col: 109}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 			if templ_7745c5c3_Err != nil {
@@ -1041,7 +1053,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var58 string
 			templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(rv.CafeName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 242, Col: 125}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 254, Col: 125}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 			if templ_7745c5c3_Err != nil {
@@ -1054,7 +1066,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var59 string
 			templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(rv.ReviewerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 244, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 256, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 			if templ_7745c5c3_Err != nil {
@@ -1073,7 +1085,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var60 string
 				templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(deref(rv.UserEmail))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 248, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 260, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 				if templ_7745c5c3_Err != nil {
@@ -1151,7 +1163,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var65 string
 			templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(scoreText(rv.OverallScore))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 266, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 278, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 			if templ_7745c5c3_Err != nil {
@@ -1164,7 +1176,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var66 string
 			templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(scoreText(rv.WFCScore))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 267, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 279, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 			if templ_7745c5c3_Err != nil {
@@ -1182,7 +1194,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var67 string
 				templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(visitMonth(rv.VisitedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 269, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 281, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 				if templ_7745c5c3_Err != nil {
@@ -1205,7 +1217,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var68 string
 				templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(*rv.Content)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 273, Col: 97}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 285, Col: 97}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 				if templ_7745c5c3_Err != nil {
@@ -1242,7 +1254,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var71 templ.SafeURL
 				templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(*rv.ExternalURLLink))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 276, Col: 109}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 288, Col: 109}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 				if templ_7745c5c3_Err != nil {
@@ -1255,7 +1267,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var72 string
 				templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(externalTitle(rv))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 277, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 289, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 				if templ_7745c5c3_Err != nil {
@@ -1283,7 +1295,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 					var templ_7745c5c3_Var73 string
 					templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(rt.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 285, Col: 45}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 297, Col: 45}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 					if templ_7745c5c3_Err != nil {
@@ -1296,7 +1308,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 					var templ_7745c5c3_Var74 string
 					templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(fmtFloat(rt.Score))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 285, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 297, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 					if templ_7745c5c3_Err != nil {
@@ -1314,7 +1326,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 						var templ_7745c5c3_Var75 string
 						templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(rt.Bucket)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 287, Col: 22}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 299, Col: 22}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 						if templ_7745c5c3_Err != nil {
@@ -1338,7 +1350,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var76 string
 			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(fmtTime(rv.CreatedAt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 294, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 306, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 			if templ_7745c5c3_Err != nil {
@@ -1356,7 +1368,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var77 string
 				templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(fmtTime(rv.UpdatedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 296, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 308, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 				if templ_7745c5c3_Err != nil {
@@ -1402,7 +1414,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 			var templ_7745c5c3_Var80 string
 			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(errMsg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 299, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 311, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 			if templ_7745c5c3_Err != nil {
@@ -1549,7 +1561,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 				var templ_7745c5c3_Var87 templ.SafeURL
 				templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/reviews/" + itoa(rv.ID) + "/ratings"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 324, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 336, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 				if templ_7745c5c3_Err != nil {
@@ -1593,7 +1605,7 @@ func ReviewRow(rv models.Review, tab, errMsg string) templ.Component {
 					var templ_7745c5c3_Var90 templ.SafeURL
 					templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/reviews/" + itoa(rv.ID) + "/edit"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 329, Col: 88}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 341, Col: 88}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 					if templ_7745c5c3_Err != nil {
@@ -1700,7 +1712,7 @@ func reviewAction(rv models.Review, tab, action, cls, confirm string) templ.Comp
 		var templ_7745c5c3_Var95 string
 		templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.ResolveAttributeValue("/reviews/" + itoa(rv.ID) + "/" + action)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 350, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 362, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var95)
 		if templ_7745c5c3_Err != nil {
@@ -1713,7 +1725,7 @@ func reviewAction(rv models.Review, tab, action, cls, confirm string) templ.Comp
 		var templ_7745c5c3_Var96 string
 		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.ResolveAttributeValue(reviewTabVals(tab))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 351, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 363, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var96)
 		if templ_7745c5c3_Err != nil {
@@ -1726,7 +1738,7 @@ func reviewAction(rv models.Review, tab, action, cls, confirm string) templ.Comp
 		var templ_7745c5c3_Var97 string
 		templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.ResolveAttributeValue("#review-" + itoa(rv.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 352, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 364, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var97)
 		if templ_7745c5c3_Err != nil {
@@ -1744,7 +1756,7 @@ func reviewAction(rv models.Review, tab, action, cls, confirm string) templ.Comp
 			var templ_7745c5c3_Var98 string
 			templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.ResolveAttributeValue(confirm)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 356, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 368, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var98)
 			if templ_7745c5c3_Err != nil {
@@ -1804,7 +1816,7 @@ func reviewResolved(rv models.Review) templ.Component {
 		var templ_7745c5c3_Var101 string
 		templ_7745c5c3_Var101, templ_7745c5c3_Err = templ.ResolveAttributeValue("review-" + itoa(rv.ID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 364, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 376, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var101)
 		if templ_7745c5c3_Err != nil {
@@ -1830,7 +1842,7 @@ func reviewResolved(rv models.Review) templ.Component {
 		var templ_7745c5c3_Var103 string
 		templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(rv.ReviewerName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 365, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 377, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 		if templ_7745c5c3_Err != nil {
@@ -1843,7 +1855,7 @@ func reviewResolved(rv models.Review) templ.Component {
 		var templ_7745c5c3_Var104 string
 		templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(rv.CafeName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 365, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 377, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
 		if templ_7745c5c3_Err != nil {
@@ -1969,7 +1981,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 				var templ_7745c5c3_Var112 string
 				templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(rv.ReviewerName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 381, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 393, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 				if templ_7745c5c3_Err != nil {
@@ -1982,7 +1994,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 				var templ_7745c5c3_Var113 string
 				templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.JoinStringErrs(rv.CafeName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 381, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 393, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var113))
 				if templ_7745c5c3_Err != nil {
@@ -2025,7 +2037,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 				var templ_7745c5c3_Var116 string
 				templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.JoinStringErrs(scoreText(rv.OverallScore))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 386, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 398, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var116))
 				if templ_7745c5c3_Err != nil {
@@ -2038,7 +2050,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 				var templ_7745c5c3_Var117 string
 				templ_7745c5c3_Var117, templ_7745c5c3_Err = templ.JoinStringErrs(scoreText(rv.WFCScore))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 386, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 398, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var117))
 				if templ_7745c5c3_Err != nil {
@@ -2056,7 +2068,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 					var templ_7745c5c3_Var118 string
 					templ_7745c5c3_Var118, templ_7745c5c3_Err = templ.JoinStringErrs(visitMonth(rv.VisitedAt))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 388, Col: 49}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 400, Col: 49}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var118))
 					if templ_7745c5c3_Err != nil {
@@ -2079,7 +2091,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 					var templ_7745c5c3_Var119 string
 					templ_7745c5c3_Var119, templ_7745c5c3_Err = templ.JoinStringErrs(*rv.Content)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 392, Col: 85}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 404, Col: 85}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var119))
 					if templ_7745c5c3_Err != nil {
@@ -2097,7 +2109,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 				var templ_7745c5c3_Var120 templ.SafeURL
 				templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/reviews/" + itoa(rv.ID) + "/ratings"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 395, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 407, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var120))
 				if templ_7745c5c3_Err != nil {
@@ -2131,7 +2143,7 @@ func ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg s
 				var templ_7745c5c3_Var122 templ.SafeURL
 				templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/reviews?status=" + rv.Status))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 400, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 412, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var122))
 				if templ_7745c5c3_Err != nil {
@@ -2304,7 +2316,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 				var templ_7745c5c3_Var131 string
 				templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.JoinStringErrs(partnershipTitle(rv))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 446, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 458, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var131))
 				if templ_7745c5c3_Err != nil {
@@ -2339,7 +2351,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 				var templ_7745c5c3_Var134 templ.SafeURL
 				templ_7745c5c3_Var134, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(partnershipAction(rv)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 448, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 460, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var134))
 				if templ_7745c5c3_Err != nil {
@@ -2439,7 +2451,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 						var templ_7745c5c3_Var142 string
 						templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.ResolveAttributeValue(itoa(c.CafeID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 457, Col: 39}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 469, Col: 39}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var142)
 						if templ_7745c5c3_Err != nil {
@@ -2462,7 +2474,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 						var templ_7745c5c3_Var143 string
 						templ_7745c5c3_Var143, templ_7745c5c3_Err = templ.JoinStringErrs(c.Name)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 457, Col: 86}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 469, Col: 86}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var143))
 						if templ_7745c5c3_Err != nil {
@@ -2520,7 +2532,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var147 string
 					templ_7745c5c3_Var147, templ_7745c5c3_Err = templ.ResolveAttributeValue(rv.ReviewerName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 462, Col: 77}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 474, Col: 77}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var147)
 					if templ_7745c5c3_Err != nil {
@@ -2577,7 +2589,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var151 string
 					templ_7745c5c3_Var151, templ_7745c5c3_Err = templ.JoinStringErrs(deref(rv.Content))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 466, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 478, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var151))
 					if templ_7745c5c3_Err != nil {
@@ -2634,7 +2646,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var155 string
 					templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.ResolveAttributeValue(floatStr(rv.OverallScore))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 470, Col: 128}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 482, Col: 128}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var155)
 					if templ_7745c5c3_Err != nil {
@@ -2687,7 +2699,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var159 string
 					templ_7745c5c3_Var159, templ_7745c5c3_Err = templ.ResolveAttributeValue(floatStr(rv.WFCScore))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 473, Col: 120}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 485, Col: 120}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var159)
 					if templ_7745c5c3_Err != nil {
@@ -2740,7 +2752,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var163 string
 					templ_7745c5c3_Var163, templ_7745c5c3_Err = templ.ResolveAttributeValue(monthInput(rv.VisitedAt))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 476, Col: 99}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 488, Col: 99}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var163)
 					if templ_7745c5c3_Err != nil {
@@ -2797,7 +2809,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var167 string
 					templ_7745c5c3_Var167, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(rv.ExternalURLTitle))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 481, Col: 93}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 493, Col: 93}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var167)
 					if templ_7745c5c3_Err != nil {
@@ -2850,7 +2862,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var171 string
 					templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.ResolveAttributeValue(deref(rv.ExternalURLLink))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 484, Col: 102}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 496, Col: 102}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var171)
 					if templ_7745c5c3_Err != nil {
@@ -2945,7 +2957,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 					var templ_7745c5c3_Var177 string
 					templ_7745c5c3_Var177, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.URL("/reviews/" + itoa(rv.ID) + "/remove"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 498, Col: 69}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 510, Col: 69}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var177)
 					if templ_7745c5c3_Err != nil {
@@ -2993,7 +3005,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 				var templ_7745c5c3_Var180 templ.SafeURL
 				templ_7745c5c3_Var180, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL("/reviews?status=" + partnershipBackStatus(rv)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 509, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 521, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var180))
 				if templ_7745c5c3_Err != nil {
@@ -3041,7 +3053,7 @@ func PartnershipFormPage(rv models.Review, opts models.ReviewFormOptions, errMsg
 				var templ_7745c5c3_Var184 string
 				templ_7745c5c3_Var184, templ_7745c5c3_Err = templ.JoinStringErrs(partnershipSubmit(rv))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 510, Col: 104}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/reviews.templ`, Line: 522, Col: 104}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var184))
 				if templ_7745c5c3_Err != nil {
