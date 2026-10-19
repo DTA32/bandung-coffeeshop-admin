@@ -14,7 +14,7 @@ editor, 2.20.2, MIT) and fonts are vendored in `static/vendor/`.
 ## Layout
 
 Organised by entity (`cafe`, `location`, `tag`, `rating_type`, `rating_category`, `feed`, `change`, `post`,
-`source`, `user`, `dashboard`) inside each layer; handlers call controllers, controllers call the repository:
+`source`, `user`, `review`, `dashboard`) inside each layer; handlers call controllers, controllers call the repository:
 
 ```
 main.go          wiring, graceful shutdown
@@ -23,7 +23,7 @@ routes/          <entity>.route.go: route registration per entity (+ basic.route
 handlers/        shared code only: handler.go (Handler + deps), helpers.go (render/error), forms.go (parse primitives),
                  gethealth.go
 handlers/<entity>/  one package per entity (cafe, location, tag, ratingtype, ratingcategory, feed, change, post,
-                 source, user, dashboard): one struct per route, one file per route <get|post><entity><action>.go,
+                 source, user, review, dashboard): one struct per route, one file per route <get|post><entity><action>.go,
                  plus handler.go (shared helpers) and form.go (form parsing)
 controllers/     <entity>.controller.go: business rules, validation, normalisation (no SQL)
 repository/      <entity>.repository.go: all SQL (pgx) and every transaction
@@ -40,6 +40,11 @@ static/          embedded CSS, JS, vendored libs
 - Location form: area / district geometries are edited on a map (leaflet-geoman) bound to the GeoJSON textarea.
 - Cafe form: a "Touch" button on each saved, visible tag bumps `cafe_tag.updated_at` (the public site's cafe
   "remark" is the most recently updated visible tag) without saving the form or touching `cafe.updated_at`.
+- Cafe form: "About this cafe" (EN / ID) text; reviews and ratings live on `/reviews` now.
+- Reviews (`/reviews`): moderation queue with pending / approved / rejected / deleted tabs, cafe and
+  partnership-only filters; approve, reject, pin / unpin and fix a review's ratings. Partnership reviews (no user
+  account) are created, edited and removed here and published straight away. Needs BE migration 011 (and 012
+  right after deploy).
 - Cafe list: sort by least / most recently updated (`?sort=updated_asc|updated_desc`).
 - Lists load 50 rows at a time by infinite scroll (HTMX `revealed` sentinel; `?page=N` on the same URL, filters
   carried along; the `/changes` and `/posts` queues page by an `after=` cursor so approvals don't skip rows). Cafe and location search is server-side typeahead (`?q=`, case-insensitive match on name / id).

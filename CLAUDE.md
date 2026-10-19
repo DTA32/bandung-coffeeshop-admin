@@ -27,7 +27,7 @@ make test         # go test ./... -race -cover
 go vet ./...
 make fmt          # templ fmt + go fmt
 
-# Repository integration tests run only against a migrated database (001–009):
+# Repository integration tests run only against a migrated database (001–012):
 ADMIN_TEST_DSN='postgres://postgres:postgres@localhost:5432/bandung_coffeeshop?sslmode=disable' go test ./repository
 
 docker build -t bandung-coffeeshop-admin .
@@ -52,11 +52,11 @@ main.go          wiring: repository.New(pool) -> controllers.New(repos) -> handl
                  (layout follows Sinanaas/gotth-auction)
 initializers/    LoadEnv/LoadConfig (env config; DSN pins the session timezone to UTC), ConnectDB (pgx pool)
 routes/          <entity>.route.go (cafe, location, tag, rating_type, rating_category, feed, change, post, source,
-                 user, dashboard) + basic.route.go (health, static) + routes.go (middleware chain)
+                 user, review, dashboard) + basic.route.go (health, static) + routes.go (middleware chain)
 handlers/        shared code only, package `handlers`: handler.go (Handler{Ctl, Cfg}), helpers.go (Render/ServerError/
                  NotFound/UserError/SavedOr/FriendlyUnique), forms.go (Opt*/Checked/ParseImages/FormErrorf), gethealth.go
 handlers/<entity>/  one package per entity (cafe, location, tag, ratingtype, ratingcategory, feed, change, post, source,
-                 user, dashboard); each route is one small struct embedding *handlers.Handler, one file per route named
+                 user, review, dashboard); each route is one small struct embedding *handlers.Handler, one file per route named
                  <get|post><entity><action>.go (cafe/getcafes.go, cafe/postcafeedit.go, change/postchangeapproveall.go,
                  source/getsourcesnapshot.go), plus handler.go (helpers used by several routes of the entity) and
                  form.go (+ form_test.go) for form parsing. Cross-entity helpers are exported (cafe.FromPath,
@@ -69,7 +69,7 @@ repository/      <entity>.repository.go: XxxRepository, all raw pgx SQL; reposit
 models/          <entity>.model.go DTOs shared by all layers
 middleware/      SameOrigin (CSRF guard), Logging, Recover, SecurityHeaders, CacheStatic
 templates/       templ components, one file per entity (cafes, locations, tags, rating_types, rating_categories,
-                 feeds, changes, posts, sources, users, dashboard) + layout/components/icons .templ, helpers.go, styles.go
+                 feeds, changes, posts, sources, users, reviews, dashboard) + layout/components/icons .templ, helpers.go, styles.go
 utils/           request helpers (PathInt, QueryInt, IsHTMX, RedirectOK) and small value helpers
 static/          embedded (embed.go): css/, js/forms.js (Leaflet picker + geoman polygon editor, image list, toggles), vendor/ (htmx, leaflet, fonts)
 ```
@@ -77,13 +77,14 @@ static/          embedded (embed.go): css/, js/forms.js (Leaflet picker + geoman
 Entities: `cafe`, `location` (non-cafe poi/area/district + `location_image`), `tag`, `rating_type`
 (`rating_type_label`), `rating_category`, `feed` (`cafe_feed`), `change` (field `change_proposal`s), `post`
 (`ig_post` proposals), `source` (`source_target` + `scrape_run` + snapshots), `user` (`users`, BE migration 009,
-BCF-25), `dashboard` (home counts incl. active / deleted users; its controller also reads `SourceRepository.LastRuns`). Naming convention everywhere: `<entity>.<layer>.go`
+BCF-25), `review` (`cafe_review` + its `cafe_rating` rows, BE migrations 011 + 012, BCF-31), `dashboard` (home counts incl. active / deleted users and pending reviews; its controller also reads `SourceRepository.LastRuns`). Naming convention everywhere: `<entity>.<layer>.go`
 (`cafe.model.go`, `cafe.repository.go`, `cafe.controller.go`, `cafe.route.go`); templates use the plural
 (`cafes.templ`). `change` and `post` share the `change_proposal` table, so the lock/resolve/get/reject helpers
 are package functions in `repository/change.repository.go`.
 
-Transactions (all in `repository/`): `CafeRepository.Create/Update` (location + cafe + price/review/ratings/
-tags/images), `LocationRepository.Create/Update` (location + images), `TagRepository.Delete` (cafe_tag + tag),
+Transactions (all in `repository/`): `CafeRepository.Create/Update` (location + cafe + price/tags/images),
+`ReviewRepository.SetStatus/SetPinned` (row locked `FOR UPDATE`), `ReviewRepository.ReplaceRatings`,
+`ReviewRepository.CreatePartnership/UpdatePartnership` (review + ratings), `LocationRepository.Create/Update` (location + images), `TagRepository.Delete` (cafe_tag + tag),
 `ChangeRepository.Apply` (live column + proposal resolve + `cafe.updated_at`/`location.updated_at` bump),
 `ChangeRepository.Reject` / `PostRepository.Ignore`, `PostRepository.CreateFeed` (cafe_feed insert + proposal
 approve). Controllers never open a transaction.
@@ -96,9 +97,11 @@ covered by the gated `repository` integration tests.
 
 ### Pages
 
-- `/` dashboard (pending counts, failing sources, active / deleted users, last run per source)
+- `/` dashboard (pending changes / posts / reviews, failing sources, active / deleted users, last run per source)
 - `/cafes`, `/cafes/new`, `/cafes/{location_id}` — full cafe form (basics, details incl. weather / phone /
-  menu / status, Leaflet coordinates, pricing, review, ratings, tags, ordered images); soft delete. The list
+  menu / status, Leaflet coordinates, "About this cafe" EN / ID = `cafe.description(_indo)` (empty → NULL; the
+  address stays in `location.description(_indo)`), pricing, tags, ordered images); soft delete. Reviews and
+  ratings are not on the cafe form any more (see `/reviews`). The list
   sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`) and
   searches server-side (`?q=`, typeahead).
   Each saved + visible tag row has a "Touch" button (`POST /cafes/{id}/tags/{tagId}/touch`, HTMX, swaps the row's
@@ -119,7 +122,15 @@ covered by the gated `repository` integration tests.
   tabs all / active / deleted, newest first, infinite scroll like every list (see below). The typeahead and tabs
   target `#user-list` and get the `UserResults` fragment (tabs + table); the scroll sentinel gets `UserRows`. `POST /users/{id}/delete` / `revive` only set `users.status` (no-op if unchanged) and
   return the row. The BE checks `users.status` on every request (deleted = logged out at once) and hides a deleted
-  user's reviews at read time, so this app never touches Redis sessions or reviews
+  user's reviews at read time, so `/users` never touches Redis sessions or reviews
+- `/reviews` — review moderation (BCF-31): status tabs pending (default) / approved / rejected / deleted, cafe
+  filter (`?cafe=`), partnership-only toggle (`?partnership=1`); reviews of deleted users are left out. Pending
+  is FIFO (`updated_at ASC, id ASC`), the other tabs newest first; cursor paging `after=<last review id>`.
+  Card actions (HTMX, swap the card; `tab` is sent so a card that leaves the tab renders compact):
+  `POST /reviews/{id}/approve` (pending / rejected → approved), `/reject` (pending / approved → rejected),
+  `/pin`, `/unpin` (any non-deleted review). `GET/POST /reviews/{id}/ratings` edits a review's ratings.
+  `GET/POST /reviews/new`, `GET/POST /reviews/{id}/edit` (partnership reviews only, else 404) and
+  `POST /reviews/{id}/remove` (partnership only → `deleted`; HTMX from the queue, form post from the edit page)
 
 ### List pages: pagination and typeahead
 
@@ -137,7 +148,8 @@ name / id, `%`, `_` and `\` escaped by `repository.EscapeLike`; the input is a t
 `input changed delay:300ms, search`, `hx-push-url`, `hx-include` for sort/type). The approval queues
 page by cursor instead of offset, because approving rows already on screen shrinks the queue and an offset
 would then skip unseen rows: `/changes` takes `after=<last cafe id>` (50 cafe groups per page, ordered by
-location name, id) and `/posts` takes `after=<last proposal id>` (ordered by taken_at desc, id desc); `page`
+location name, id), `/posts` takes `after=<last proposal id>` (ordered by taken_at desc, id desc) and
+`/reviews` takes `after=<last review id>` (keyset on updated_at, id; ascending on the pending tab); `page`
 still increments so fragment detection works. Lists needing everything keep an unpaged method (`CafeRepository.Options`,
 `TagRepository.List`, `RatingTypeRepository.List`, `RatingCategoryRepository.List`).
 
@@ -167,6 +179,30 @@ sets `cafe.updated_at = now()` (plus `location.updated_at` for `address` / `stat
 `description_indo` is never touched), `status` → `location.status`. Reject/dismiss/ignore =
 `rejected`; the scraper never re-proposes a rejected value. A post approval inserts `cafe_feed` and
 stores `{"cafe_feed_id": n}`.
+
+### Review rules (BCF-31; schema = BE migrations 011 + 012)
+
+- "Visible" on the public site = `status = 'approved' AND (user_id IS NULL OR users.status = 'active')`.
+  `user_id IS NULL` = partnership review (admin-entered, `reviewer_name` only).
+- User reviews: the admin may only approve / reject, pin / unpin and edit the ratings. Text, scores, visit month,
+  link and `updated_at` stay as the author wrote them. The public BE puts an edited review back to `pending`
+  itself; this app never needs to. User reviews are never deleted here (the author does that; deleting the user
+  on `/users` hides them).
+- Moderation and rating edits never bump `cafe_review.updated_at` (= the author's last edit, which orders the
+  public list). Status / pin changes lock the row with `SELECT ... FOR UPDATE` and check the allowed source
+  statuses (`controllers.reviewTransitions`); a lost race returns `ErrReviewStateChanged`, shown on the card.
+- Partnership reviews: cafe, reviewer name and content required; overall / WFC score optional, 1–5 in 0.1 steps;
+  visit month optional (`<input type="month">` → first of the month); external link optional, http(s) only, a
+  title needs a link; pin checkbox. Created `approved`; editing sets `updated_at = now()` and keeps the status;
+  "Remove" sets `deleted`.
+- Ratings belong to a review (`cafe_rating.review_id`) and are validated against the type's bucket bounds
+  (`RatingTypeRepository.Bounds`, `controllers.ValidateRatings`). Saving replaces them: `DELETE ... WHERE
+  review_id = $1` then `INSERT` (cafe_id, category_type, score, overrides, review_id) in one transaction. Never
+  use `ON CONFLICT`: until 012 the table is `UNIQUE (cafe_id, category_type)`, after 012 it is
+  `UNIQUE (review_id, category_type)`, so no conflict target works on both. Before 012 a second review rating
+  the same type of the same cafe fails with `ErrRatingTaken` (shown to the admin).
+- Deploy order: BE migration 011 → this admin (+ the BE) → 012. Never reference `cafe_review.is_subjective`,
+  `personal_score` or `content_indo` (dropped by 012).
 
 ### Data conventions
 
