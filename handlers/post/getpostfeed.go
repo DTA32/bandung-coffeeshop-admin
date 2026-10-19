@@ -27,7 +27,6 @@ func (h *GetPostFeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	choices := controllers.PostImageURLs(*post, h.Cfg.ImageBaseURL)
-	now := time.Now()
 	f := templates.FeedForm{
 		Action:      "/posts/" + strconv.FormatInt(post.ID, 10) + "/feed",
 		Title:       "Create feed from post",
@@ -36,11 +35,20 @@ func (h *GetPostFeedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Content:     strings.TrimSpace(post.Value.Caption),
 		Author:      "Admin",
 		Link:        post.Value.Permalink,
-		PublishedAt: now.In(h.Cfg.DisplayTZ).Format("2006-01-02T15:04"),
+		PublishedAt: defaultPublishedAt(post.Value.TakenAt, time.Now()).In(h.Cfg.DisplayTZ).Format("2006-01-02T15:04"),
 		Visible:     true,
 		Choices:     choices,
 		Selected:    choices,
 		Post:        post,
 	}
 	h.Render(w, r, http.StatusOK, templates.FeedFormPage(f))
+}
+
+// defaultPublishedAt prefills the feed's published_at with when the post went
+// up on Instagram, falling back to now when the scraper didn't record it.
+func defaultPublishedAt(takenAt, now time.Time) time.Time {
+	if takenAt.IsZero() {
+		return now
+	}
+	return takenAt
 }
