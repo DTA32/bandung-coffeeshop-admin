@@ -1,6 +1,12 @@
 package templates
 
-import "github.com/dta32/bandung-coffeeshop-admin/models"
+import (
+	"encoding/json"
+	"net/url"
+	"time"
+
+	"github.com/dta32/bandung-coffeeshop-admin/models"
+)
 
 // RatingsEditor is a review's ratings: one box per rating type with an enable
 // checkbox, the type's bucket legend, a score input bounded by the buckets and
@@ -121,3 +127,311 @@ func bucketMax(cats []models.RatingCategory, t string) float64 {
 	return out
 }
 
+// ReviewFilter is the active /reviews status tab, cafe and partnership toggle.
+type ReviewFilter struct {
+	Status          string
+	CafeID          int
+	PartnershipOnly bool
+}
+
+// ReviewFilterValues are f as /reviews query params (defaults left out).
+func ReviewFilterValues(f ReviewFilter) url.Values {
+	v := url.Values{}
+	if f.Status != "" && f.Status != models.ReviewStatusPending {
+		v.Set("status", f.Status)
+	}
+	if f.CafeID != 0 {
+		v.Set("cafe", itoa(f.CafeID))
+	}
+	if f.PartnershipOnly {
+		v.Set("partnership", "1")
+	}
+	return v
+}
+
+func reviewsURL(f ReviewFilter, status string) string {
+	f.Status = status
+	if v := ReviewFilterValues(f); len(v) > 0 {
+		return "/reviews?" + v.Encode()
+	}
+	return "/reviews"
+}
+
+var reviewTabLabels = map[string]string{
+	models.ReviewStatusPending:  "Pending",
+	models.ReviewStatusApproved: "Approved",
+	models.ReviewStatusRejected: "Rejected",
+	models.ReviewStatusDeleted:  "Deleted",
+}
+
+// ReviewsPage is the moderation queue (BCF-31): status tabs (pending is FIFO,
+// oldest edit first; the others newest first), a cafe filter, a
+// partnership-only toggle and infinite scroll by after= cursor.
+templ ReviewsPage(items []models.Review, f ReviewFilter, cafes []models.CafeListItem, next, ok, errMsg string) {
+	@Layout("Reviews", NavReviews) {
+		@Page(pageCls) {
+			@BackLink("/", "Admin home")
+			<div class="flex items-center justify-between">
+				<h1 class={ h1Cls }>Reviews</h1>
+				<a href="/reviews/new" class={ btnNewCls }>
+					@Icon("plus", 16)
+					Partnership review
+				</a>
+			</div>
+			<p class={ introCls }>
+				Approve or reject what users wrote, pin reviews to the top of a cafe page and fix their rating
+				scores. A user review's text and scores stay as written; partnership reviews are fully editable here.
+			</p>
+			@Notice(ok, errMsg)
+			<form method="get" action="/reviews" class="flex flex-wrap items-center gap-4">
+				if f.Status != models.ReviewStatusPending {
+					<input type="hidden" name="status" value={ f.Status }/>
+				}
+				<select class={ inputCls } name="cafe" aria-label="Filter by cafe" data-autosubmit>
+					<option value="">All cafes</option>
+					for _, c := range cafes {
+						<option value={ itoa(c.CafeID) } selected?={ c.CafeID == f.CafeID }>{ c.Name }</option>
+					}
+				</select>
+				<label class={ checkRowCls }>
+					<input type="checkbox" name="partnership" value="1" checked?={ f.PartnershipOnly } data-autosubmit/>
+					<span class={ checkTextCls }>Partnership only</span>
+				</label>
+				<noscript><button type="submit" class={ btnOutlineSmCls }>Filter</button></noscript>
+			</form>
+			<nav class="flex flex-wrap gap-2" aria-label="Filter by status">
+				for _, s := range models.ReviewStatuses {
+					<a
+						href={ templ.URL(reviewsURL(f, s)) }
+						class={ tabCls, templ.KV(tabActiveCls, s == f.Status), templ.KV(tabIdleCls, s != f.Status) }
+						if s == f.Status {
+							aria-current="page"
+						}
+					>{ reviewTabLabels[s] }</a>
+				}
+			</nav>
+			if len(items) == 0 {
+				<p class="m-0 text-sm text-bark">No { lower(reviewTabLabels[f.Status]) } reviews.</p>
+			}
+			<div class="flex flex-col gap-4">
+				@ReviewCards(items, f.Status, next)
+			</div>
+		}
+	}
+}
+
+// ReviewCards renders review cards plus the next-page sentinel (full page and
+// infinite-scroll fragment).
+templ ReviewCards(items []models.Review, tab, next string) {
+	for _, rv := range items {
+		@ReviewRow(rv, tab, "")
+	}
+	@LoadMore(next)
+}
+
+// ReviewRow is one review card on the tab `tab`; the moderation buttons swap it
+// in place (outerHTML). A review that has left the tab renders as a compact
+// resolved card unless there is an error to show.
+templ ReviewRow(rv models.Review, tab, errMsg string) {
+	if rv.Status != tab && errMsg == "" {
+		@reviewResolved(rv)
+	} else {
+		<article id={ "review-" + itoa(rv.ID) } class={ cardTightCls }>
+			<header class="flex flex-wrap items-start justify-between gap-2">
+				<div class="flex min-w-0 flex-col">
+					<a class="text-sm font-semibold text-forest hover:underline" href={ templ.URL("/cafes/" + rv.LocationID) }>{ rv.CafeName }</a>
+					<span class="break-all text-xs text-bark">
+						{ rv.ReviewerName } ·
+						if rv.IsPartnership() {
+							Partnership
+						} else {
+							{ deref(rv.UserEmail) }
+						}
+					</span>
+				</div>
+				<div class="flex flex-wrap items-center gap-1">
+					if rv.IsPartnership() {
+						<span class={ pillCls, "bg-sky-50 text-sky-700" }>partnership</span>
+					}
+					if rv.IsPinned {
+						<span class={ "flex items-center gap-1", pillCls, "bg-amber-50 text-amber-700" }>
+							@Icon("pin", 12)
+							pinned
+						</span>
+					}
+					@StatusBadge(rv.Status)
+				</div>
+			</header>
+			<div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-bark">
+				<span>Overall <strong class="text-forest">{ scoreText(rv.OverallScore) }</strong></span>
+				<span>WFC <strong class="text-forest">{ scoreText(rv.WFCScore) }</strong></span>
+				if rv.VisitedAt != nil {
+					<span>Visited { visitMonth(rv.VisitedAt) }</span>
+				}
+			</div>
+			if rv.Content != nil {
+				<p class="m-0 line-clamp-6 whitespace-pre-wrap break-words text-sm text-forest">{ *rv.Content }</p>
+			}
+			if rv.ExternalURLLink != nil {
+				<a class={ "flex w-fit items-center gap-1 text-xs", inlineLinkCls } href={ templ.URL(*rv.ExternalURLLink) } target="_blank" rel="noopener noreferrer nofollow">
+					{ externalTitle(rv) }
+					@Icon("external-link", 12)
+				</a>
+			}
+			if len(rv.Ratings) > 0 {
+				<ul class="m-0 flex flex-wrap gap-2 p-0 text-xs">
+					for _, rt := range rv.Ratings {
+						<li class="list-none rounded-md bg-forest-lighter px-2 py-1 text-moss">
+							<span class="font-semibold">{ rt.Label }:</span> { fmtFloat(rt.Score) }
+							if rt.Bucket != "" {
+								· { rt.Bucket }
+							}
+						</li>
+					}
+				</ul>
+			}
+			<span class="text-xs text-bark">
+				Created { fmtTime(rv.CreatedAt) }
+				if !rv.UpdatedAt.Equal(rv.CreatedAt) {
+					· edited { fmtTime(rv.UpdatedAt) }
+				}
+			</span>
+			<p class={ rowErrorCls } role="alert" hidden?={ errMsg == "" }>{ errMsg }</p>
+			if rv.Status != models.ReviewStatusDeleted {
+				<div class="flex flex-wrap gap-2">
+					if rv.Status == models.ReviewStatusPending || rv.Status == models.ReviewStatusRejected {
+						@reviewAction(rv, tab, "approve", btnPrimarySmCls, "") {
+							@Icon("check", 14)
+							Approve
+						}
+					}
+					if rv.Status == models.ReviewStatusPending || rv.Status == models.ReviewStatusApproved {
+						@reviewAction(rv, tab, "reject", btnDeleteSmCls, "") {
+							@Icon("x", 14)
+							Reject
+						}
+					}
+					if rv.IsPinned {
+						@reviewAction(rv, tab, "unpin", btnOutlineSmCls, "") {
+							Unpin
+						}
+					} else {
+						@reviewAction(rv, tab, "pin", btnOutlineSmCls, "") {
+							@Icon("pin", 14)
+							Pin
+						}
+					}
+					<a class={ btnOutlineSmCls } href={ templ.URL("/reviews/" + itoa(rv.ID) + "/ratings") }>
+						@Icon("star", 14)
+						Ratings
+					</a>
+					if rv.IsPartnership() {
+						<a class={ btnOutlineSmCls } href={ templ.URL("/reviews/" + itoa(rv.ID) + "/edit") }>
+							@Icon("pencil", 14)
+							Edit
+						</a>
+						@reviewAction(rv, tab, "remove", btnDeleteSmCls, "Remove this partnership review? It disappears from the site.") {
+							@Icon("trash-2", 14)
+							Remove
+						}
+					}
+				</div>
+			}
+		</article>
+	}
+}
+
+// reviewAction is an HTMX button posting to /reviews/{id}/{action} with the
+// current tab; the response replaces the card.
+templ reviewAction(rv models.Review, tab, action, cls, confirm string) {
+	<button
+		type="button"
+		class={ cls }
+		hx-post={ "/reviews/" + itoa(rv.ID) + "/" + action }
+		hx-vals={ reviewTabVals(tab) }
+		hx-target={ "#review-" + itoa(rv.ID) }
+		hx-swap="outerHTML"
+		hx-disabled-elt="this"
+		if confirm != "" {
+			hx-confirm={ confirm }
+		}
+	>
+		{ children... }
+	</button>
+}
+
+templ reviewResolved(rv models.Review) {
+	<article id={ "review-" + itoa(rv.ID) } class={ "flex flex-wrap items-center gap-2", cardTightCls, "text-sm text-bark" }>
+		<span><span class="font-semibold text-forest">{ rv.ReviewerName }</span> on { rv.CafeName }</span>
+		@StatusBadge(rv.Status)
+		if rv.IsPinned {
+			<span class={ pillCls, "bg-amber-50 text-amber-700" }>pinned</span>
+		}
+	</article>
+}
+
+// ReviewRatingsPage edits one review's ratings; everything else is shown
+// read-only. Saving replaces the review's cafe_rating rows only.
+templ ReviewRatingsPage(rv models.Review, opts models.ReviewFormOptions, errMsg string) {
+	@Layout("Review ratings", NavReviews) {
+		@Page(pageCls) {
+			@BackLink("/reviews?status="+rv.Status, "Back to reviews")
+			<div class="flex flex-wrap items-baseline gap-3">
+				<h1 class={ h1Cls }>Ratings</h1>
+				<span class="text-sm text-bark">{ rv.ReviewerName } on { rv.CafeName }</span>
+			</div>
+			<section class={ cardTightCls }>
+				<div class="flex flex-wrap items-center gap-2 text-xs text-bark">
+					@StatusBadge(rv.Status)
+					<span>Overall { scoreText(rv.OverallScore) } · WFC { scoreText(rv.WFCScore) }</span>
+					if rv.VisitedAt != nil {
+						<span>· visited { visitMonth(rv.VisitedAt) }</span>
+					}
+				</div>
+				if rv.Content != nil {
+					<p class="m-0 whitespace-pre-wrap break-words text-sm text-forest">{ *rv.Content }</p>
+				}
+			</section>
+			<form method="post" action={ templ.URL("/reviews/" + itoa(rv.ID) + "/ratings") } class="flex flex-col gap-6">
+				@Notice("", errMsg)
+				@RatingsEditor(rv.Ratings, opts.RatingTypes, opts.RatingCategories)
+				<p class="m-0 text-xs text-bark">Saving replaces this review's ratings; its status and last-edited date stay as they are.</p>
+				<div class="flex justify-end gap-2">
+					<a href={ templ.URL("/reviews?status=" + rv.Status) } class={ btnCancelCls }>Cancel</a>
+					<button type="submit" class={ btnSubmitCls } data-saving-label="Saving...">Save ratings</button>
+				</div>
+			</form>
+		}
+	}
+}
+
+func reviewTabVals(tab string) string {
+	b, _ := json.Marshal(map[string]string{"tab": tab})
+	return string(b)
+}
+
+func scoreText(p *float64) string {
+	if p == nil {
+		return "—"
+	}
+	return fmtFloat(*p)
+}
+
+// visitMonth renders a visited_at date ("2026-09-01") as "Sep 2026".
+func visitMonth(s *string) string {
+	if s == nil {
+		return ""
+	}
+	t, err := time.Parse("2006-01-02", *s)
+	if err != nil {
+		return *s
+	}
+	return t.Format("Jan 2006")
+}
+
+func externalTitle(rv models.Review) string {
+	if rv.ExternalURLTitle != nil {
+		return *rv.ExternalURLTitle
+	}
+	return deref(rv.ExternalURLLink)
+}

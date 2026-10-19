@@ -6,6 +6,7 @@ const (
 	NavDashboard Nav = "dashboard"
 	NavChanges   Nav = "changes"
 	NavPosts     Nav = "posts"
+	NavReviews   Nav = "reviews"
 	NavCafes     Nav = "cafes"
 	NavLocations Nav = "locations"
 	NavTags      Nav = "tags"
@@ -23,6 +24,7 @@ type navItem struct {
 var navItems = []navItem{
 	{NavChanges, "Changes", "/changes"},
 	{NavPosts, "Posts", "/posts"},
+	{NavReviews, "Reviews", "/reviews"},
 	{NavSources, "Sources", "/sources"},
 	{NavCafes, "Cafes", "/cafes"},
 	{NavLocations, "Locations", "/locations"},
@@ -138,6 +140,8 @@ func notFoundBack(what string) string {
 		return "/sources"
 	case "User":
 		return "/users"
+	case "Review":
+		return "/reviews"
 	default:
 		return "/"
 	}
@@ -155,6 +159,8 @@ func notFoundBackLabel(what string) string {
 		return "Back to sources"
 	case "User":
 		return "Back to users"
+	case "Review":
+		return "Back to reviews"
 	default:
 		return "Admin home"
 	}

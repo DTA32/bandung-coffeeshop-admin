@@ -26,6 +26,7 @@ func New(h *handlers.Handler, static fs.FS) http.Handler {
 	PostRoutes(mux, h)
 	SourceRoutes(mux, h)
 	UserRoutes(mux, h)
+	ReviewRoutes(mux, h)
 
 	var root http.Handler = mux
 	root = middleware.SameOrigin(root)
