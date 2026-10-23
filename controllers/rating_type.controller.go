@@ -56,3 +56,22 @@ func NormalizeRatingType(rt *models.RatingType) error {
 	}
 	return nil
 }
+
+// ValidateRatings enforces each dimension's own range (e.g. price-rank spans
+// 0..100000). A type without buckets has no range, so it can't be rated (the
+// BE rejects it for user reviews too).
+func ValidateRatings(ratings []models.Rating, bounds map[string]models.RatingBounds) error {
+	for _, rt := range ratings {
+		b, ok := bounds[rt.CategoryType]
+		if !ok {
+			return invalid("invalid rating type %q", rt.CategoryType)
+		}
+		if b.Min == nil || b.Max == nil {
+			return invalid("%s has no rating categories yet", rt.CategoryType)
+		}
+		if rt.Score < *b.Min || rt.Score > *b.Max {
+			return invalid("%s score %g is outside %g–%g", rt.CategoryType, rt.Score, *b.Min, *b.Max)
+		}
+	}
+	return nil
+}

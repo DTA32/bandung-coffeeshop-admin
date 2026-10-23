@@ -23,13 +23,15 @@ type Controllers struct {
 	Change         *ChangeController
 	Post           *PostController
 	Source         *SourceController
+	User           *UserController
+	Review         *ReviewController
 	Dashboard      *DashboardController
 }
 
 func New(repos *repository.Repositories) *Controllers {
 	return &Controllers{
 		repos:          repos,
-		Cafe:           NewCafeController(repos.Cafe, repos.RatingType),
+		Cafe:           NewCafeController(repos.Cafe),
 		Location:       NewLocationController(repos.Location),
 		Tag:            NewTagController(repos.Tag),
 		RatingType:     NewRatingTypeController(repos.RatingType),
@@ -38,6 +40,8 @@ func New(repos *repository.Repositories) *Controllers {
 		Change:         NewChangeController(repos.Change),
 		Post:           NewPostController(repos.Post),
 		Source:         NewSourceController(repos.Source),
+		User:           NewUserController(repos.User),
+		Review:         NewReviewController(repos.Review, repos.RatingType),
 		Dashboard:      NewDashboardController(repos.Dashboard, repos.Source),
 	}
 }

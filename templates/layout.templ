@@ -6,11 +6,13 @@ const (
 	NavDashboard Nav = "dashboard"
 	NavChanges   Nav = "changes"
 	NavPosts     Nav = "posts"
+	NavReviews   Nav = "reviews"
 	NavCafes     Nav = "cafes"
 	NavLocations Nav = "locations"
 	NavTags      Nav = "tags"
 	NavRatings   Nav = "ratings"
 	NavSources   Nav = "sources"
+	NavUsers     Nav = "users"
 )
 
 type navItem struct {
@@ -22,11 +24,13 @@ type navItem struct {
 var navItems = []navItem{
 	{NavChanges, "Changes", "/changes"},
 	{NavPosts, "Posts", "/posts"},
+	{NavReviews, "Reviews", "/reviews"},
 	{NavSources, "Sources", "/sources"},
 	{NavCafes, "Cafes", "/cafes"},
 	{NavLocations, "Locations", "/locations"},
 	{NavTags, "Tags", "/tags"},
 	{NavRatings, "Ratings", "/rating-categories"},
+	{NavUsers, "Users", "/users"},
 }
 
 // Layout is the document shell. The header copies the public site's Header
@@ -134,6 +138,10 @@ func notFoundBack(what string) string {
 		return "/posts"
 	case "Snapshot":
 		return "/sources"
+	case "User":
+		return "/users"
+	case "Review":
+		return "/reviews"
 	default:
 		return "/"
 	}
@@ -149,6 +157,10 @@ func notFoundBackLabel(what string) string {
 		return "Back to posts"
 	case "Snapshot":
 		return "Back to sources"
+	case "User":
+		return "Back to users"
+	case "Review":
+		return "Back to reviews"
 	default:
 		return "Admin home"
 	}

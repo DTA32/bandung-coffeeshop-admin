@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,7 +15,11 @@ func IsHTMX(r *http.Request) bool {
 
 func RedirectOK(w http.ResponseWriter, r *http.Request, path, msg string) {
 	if msg != "" {
-		path += "?ok=" + url.QueryEscape(msg)
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		path += sep + "ok=" + url.QueryEscape(msg)
 	}
 	http.Redirect(w, r, path, http.StatusSeeOther)
 }

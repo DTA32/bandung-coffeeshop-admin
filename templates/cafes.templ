@@ -192,9 +192,19 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 			<h2 class={ sectionTitle }>Location</h2>
 			@CoordinatePicker(c.Coordinates, "")
 		</section>
+		// About
+		<section class={ cardCls }>
+			<h2 class={ sectionTitle }>About this cafe</h2>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				@Field("About (EN)") {
+					<textarea class={ inputCls } rows="6" name="about">{ deref(c.About) }</textarea>
+				}
+				@Field("About (ID)") {
+					<textarea class={ inputCls } rows="6" name="about_indo">{ deref(c.AboutIndo) }</textarea>
+				}
+			</div>
+		</section>
 		@cafePriceSection(c.Price)
-		@cafeReviewSection(c.Review)
-		@cafeRatingsSection(c.Ratings, opts)
 		@cafeTagsSection(c.ID, c.Tags, opts.Tags)
 		@ImagesEditor(c.Images)
 		// Actions
@@ -290,186 +300,6 @@ templ cafePriceSection(p models.CafePrice) {
 			}
 		</div>
 	</section>
-}
-
-templ cafeReviewSection(rv *models.Review) {
-	<section class={ cardCls }>
-		<h2 class={ sectionTitle }>Review</h2>
-		if rv != nil && rv.ID != nil {
-			<input type="hidden" name="review_id" value={ itoa(*rv.ID) }/>
-		}
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-			@Field("Overall score (0–5)") {
-				<input type="number" step="0.01" min="0" max="5" class={ inputCls } name="overall_score" value={ reviewFloat(rv, "overall") }/>
-			}
-			@Field("WFC score (0–5)") {
-				<input type="number" step="0.01" min="0" max="5" class={ inputCls } name="wfc_score" value={ reviewFloat(rv, "wfc") }/>
-			}
-			@Field("Personal score (0–5)") {
-				<input type="number" step="0.01" min="0" max="5" class={ inputCls } name="personal_score" value={ reviewFloat(rv, "personal") }/>
-			}
-			@Field("Visited at") {
-				<input type="date" class={ inputCls } name="visited_at" value={ reviewVisited(rv) }/>
-			}
-		</div>
-		<label class={ checkRowCls }>
-			<input type="checkbox" name="is_subjective" value="1" checked?={ rv != nil && rv.IsSubjective }/>
-			<span class={ checkTextCls }>Subjective (biased / regular visitor)</span>
-		</label>
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-			@Field("Content (EN)") {
-				<textarea class={ inputCls } rows="6" name="review_content">{ reviewText(rv, false) }</textarea>
-			}
-			@Field("Content (ID)") {
-				<textarea class={ inputCls } rows="6" name="review_content_indo">{ reviewText(rv, true) }</textarea>
-			}
-		</div>
-	</section>
-}
-
-func reviewFloat(rv *models.Review, which string) string {
-	if rv == nil {
-		return ""
-	}
-	switch which {
-	case "overall":
-		return floatStr(rv.OverallScore)
-	case "wfc":
-		return floatStr(rv.WFCScore)
-	default:
-		return floatStr(rv.PersonalScore)
-	}
-}
-
-func reviewVisited(rv *models.Review) string {
-	if rv == nil {
-		return ""
-	}
-	return deref(rv.VisitedAt)
-}
-
-func reviewText(rv *models.Review, indo bool) string {
-	if rv == nil {
-		return ""
-	}
-	if indo {
-		return deref(rv.ContentIndo)
-	}
-	return deref(rv.Content)
-}
-
-templ cafeRatingsSection(ratings []models.Rating, opts models.CafeFormOptions) {
-	<section class={ cardCls }>
-		<h2 class={ sectionTitle }>Ratings</h2>
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-			for _, rt := range opts.RatingTypes {
-				<div class="flex flex-col gap-2 rounded-xl border border-grove-light p-3" data-rating>
-					<label class="flex items-center gap-2">
-						<input type="checkbox" name={ "rating_enabled_" + rt.Type } value="1" checked?={ findRating(ratings, rt.Type) != nil } data-rating-toggle/>
-						<span class="text-sm font-semibold text-forest">{ rt.Label }</span>
-					</label>
-					if b := ratingBuckets(opts.RatingCategories, rt.Type); b != "" {
-						<span class="text-[11px] text-bark">{ b }</span>
-					}
-					<div class="flex gap-2">
-						<input
-							type="number"
-							step="any"
-							min={ fmtFloat(bucketMin(opts.RatingCategories, rt.Type)) }
-							max={ fmtFloat(bucketMax(opts.RatingCategories, rt.Type)) }
-							disabled?={ findRating(ratings, rt.Type) == nil }
-							placeholder={ "score " + fmtFloat(bucketMin(opts.RatingCategories, rt.Type)) + "–" + fmtFloat(bucketMax(opts.RatingCategories, rt.Type)) }
-							class={ inputCls, "w-32 min-w-0 disabled:opacity-40" }
-							name={ "rating_score_" + rt.Type }
-							value={ ratingScore(ratings, rt.Type) }
-							aria-label={ rt.Label + " score" }
-						/>
-						<input
-							type="text"
-							disabled?={ findRating(ratings, rt.Type) == nil }
-							placeholder="override EN (optional)"
-							class={ inputCls, "min-w-0 flex-1 disabled:opacity-40" }
-							name={ "rating_override_" + rt.Type }
-							value={ ratingOverride(ratings, rt.Type, false) }
-							aria-label={ rt.Label + " override EN" }
-						/>
-						<input
-							type="text"
-							disabled?={ findRating(ratings, rt.Type) == nil }
-							placeholder="override ID (optional)"
-							class={ inputCls, "min-w-0 flex-1 disabled:opacity-40" }
-							name={ "rating_override_indo_" + rt.Type }
-							value={ ratingOverride(ratings, rt.Type, true) }
-							aria-label={ rt.Label + " override ID" }
-						/>
-					</div>
-				</div>
-			}
-		</div>
-	</section>
-}
-
-func findRating(ratings []models.Rating, t string) *models.Rating {
-	for i := range ratings {
-		if ratings[i].CategoryType == t {
-			return &ratings[i]
-		}
-	}
-	return nil
-}
-
-func ratingScore(ratings []models.Rating, t string) string {
-	if r := findRating(ratings, t); r != nil {
-		return fmtFloat(r.Score)
-	}
-	return ""
-}
-
-func ratingOverride(ratings []models.Rating, t string, indo bool) string {
-	r := findRating(ratings, t)
-	if r == nil {
-		return ""
-	}
-	if indo {
-		return deref(r.ShortDescriptionOverrideIndo)
-	}
-	return deref(r.ShortDescriptionOverride)
-}
-
-func ratingBuckets(cats []models.RatingCategory, t string) string {
-	out := ""
-	for _, c := range cats {
-		if c.Type != t {
-			continue
-		}
-		if out != "" {
-			out += ", "
-		}
-		out += c.Name + " (" + fmtFloat(c.LowerBound) + "–" + fmtFloat(c.UpperBound) + ")"
-	}
-	return out
-}
-
-// bucketMin / bucketMax: the score range follows the dimension's own bounds
-// (e.g. price-rank spans 0..100000), not a fixed 0–5.
-func bucketMin(cats []models.RatingCategory, t string) float64 {
-	found, out := false, 0.0
-	for _, c := range cats {
-		if c.Type == t && (!found || c.LowerBound < out) {
-			found, out = true, c.LowerBound
-		}
-	}
-	return out
-}
-
-func bucketMax(cats []models.RatingCategory, t string) float64 {
-	found, out := false, 5.0
-	for _, c := range cats {
-		if c.Type == t && (!found || c.UpperBound > out) {
-			found, out = true, c.UpperBound
-		}
-	}
-	return out
 }
 
 templ cafeTagsSection(cafeID string, assigned []models.CafeTag, tags []models.Tag) {

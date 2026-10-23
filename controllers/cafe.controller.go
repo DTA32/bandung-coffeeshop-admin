@@ -11,12 +11,11 @@ import (
 )
 
 type CafeController struct {
-	repo        *repository.CafeRepository
-	ratingTypes *repository.RatingTypeRepository
+	repo *repository.CafeRepository
 }
 
-func NewCafeController(repo *repository.CafeRepository, ratingTypes *repository.RatingTypeRepository) *CafeController {
-	return &CafeController{repo: repo, ratingTypes: ratingTypes}
+func NewCafeController(repo *repository.CafeRepository) *CafeController {
+	return &CafeController{repo: repo}
 }
 
 // TouchTag bumps one saved cafe tag's updated_at; returns the new timestamp.
@@ -46,7 +45,7 @@ func (c *CafeController) Create(ctx context.Context, p *models.Cafe) error {
 	if !slugRe.MatchString(p.ID) {
 		return invalid("invalid id: use lowercase letters, numbers and hyphens")
 	}
-	if err := c.normalize(ctx, p); err != nil {
+	if err := NormalizeCafe(p); err != nil {
 		return err
 	}
 	return c.repo.Create(ctx, *p)
@@ -54,7 +53,7 @@ func (c *CafeController) Create(ctx context.Context, p *models.Cafe) error {
 
 func (c *CafeController) Update(ctx context.Context, id string, p *models.Cafe) error {
 	p.ID = id
-	if err := c.normalize(ctx, p); err != nil {
+	if err := NormalizeCafe(p); err != nil {
 		return err
 	}
 	return c.repo.Update(ctx, id, *p)
@@ -63,20 +62,6 @@ func (c *CafeController) Update(ctx context.Context, id string, p *models.Cafe) 
 // Delete soft-deletes the cafe's location.
 func (c *CafeController) Delete(ctx context.Context, id string) error {
 	return c.repo.SoftDelete(ctx, id)
-}
-
-func (c *CafeController) normalize(ctx context.Context, p *models.Cafe) error {
-	if err := NormalizeCafe(p); err != nil {
-		return err
-	}
-	if len(p.Ratings) == 0 {
-		return nil
-	}
-	bounds, err := c.ratingTypes.Bounds(ctx)
-	if err != nil {
-		return err
-	}
-	return ValidateRatings(p.Ratings, bounds)
 }
 
 // NormalizeCafe trims, defaults and validates a cafe payload in place
@@ -126,16 +111,8 @@ func NormalizeCafe(p *models.Cafe) error {
 		return invalid("invalid coordinates")
 	}
 
-	if rv := p.Review; rv != nil {
-		rv.VisitedAt = NilIfBlank(rv.VisitedAt)
-		rv.Content = NilIfBlank(rv.Content)
-		rv.ContentIndo = NilIfBlank(rv.ContentIndo)
-		for _, sc := range []*float64{rv.OverallScore, rv.WFCScore, rv.PersonalScore} {
-			if sc != nil && (*sc < 0 || *sc > 5) {
-				return invalid("review scores must be between 0 and 5")
-			}
-		}
-	}
+	p.About = NilIfBlank(p.About)
+	p.AboutIndo = NilIfBlank(p.AboutIndo)
 
 	seen := make(map[int]struct{}, len(p.Tags))
 	for _, tg := range p.Tags {
@@ -145,19 +122,4 @@ func NormalizeCafe(p *models.Cafe) error {
 		seen[tg.TagID] = struct{}{}
 	}
 	return NormalizeImages(&p.Images)
-}
-
-// ValidateRatings enforces each dimension's own range (e.g. price-rank spans
-// 0..100000); types without buckets have no range to check against.
-func ValidateRatings(ratings []models.Rating, bounds map[string]models.RatingBounds) error {
-	for _, rt := range ratings {
-		b, ok := bounds[rt.CategoryType]
-		if !ok {
-			return invalid("invalid rating type %q", rt.CategoryType)
-		}
-		if b.Min != nil && b.Max != nil && (rt.Score < *b.Min || rt.Score > *b.Max) {
-			return invalid("%s score %g is outside %g–%g", rt.CategoryType, rt.Score, *b.Min, *b.Max)
-		}
-	}
-	return nil
 }
