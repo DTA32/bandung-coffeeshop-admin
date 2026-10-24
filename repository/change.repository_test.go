@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/dta32/bandung-coffeeshop-admin/models"
@@ -12,26 +13,60 @@ func TestApplyFieldProposal(t *testing.T) {
 	repo, pool, cafeID := testRepo(t)
 	ctx := context.Background()
 
+	// Live rows: the created every-day row, plus special dates before, inside
+	// and after the window 2026-10-24 .. 2026-10-30.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO cafe_hour (cafe_id, valid_from, valid_until, close) VALUES
+			($1, '2026-10-20', '2026-10-20', true),
+			($1, '2026-10-25', '2026-10-25', true),
+			($1, '2026-10-31', '2026-11-02', true)`, cafeID); err != nil {
+		t.Fatal(err)
+	}
 	// Backdate updated_at so the bump is observable.
 	_, _ = pool.Exec(ctx, `UPDATE cafe SET updated_at = now() - interval '1 day' WHERE id = $1`, cafeID)
-	id := insertProposal(t, pool, cafeID, models.FieldHours, "", `{"open":"09:00","close":"21:00"}`)
-	if err := repo.Change.Apply(ctx, id, models.FieldUpdate{OpenHour: strp("09:00"), CloseHour: strp("21:00")},
-		map[string]string{"open": "09:00", "close": "21:00"}); err != nil {
+	hours := models.HoursProposal{WindowFrom: "2026-10-24", WindowUntil: "2026-10-30", Rows: []models.CafeHour{
+		{Day: strp("mon"), Closed: true},
+		{Open: strp("09:00"), Close: strp("21:00")},
+		{ValidFrom: strp("2026-10-28"), ValidUntil: strp("2026-10-28"), Open: strp("10:00"), Close: strp("12:00")},
+	}}
+	id := insertProposal(t, pool, cafeID, models.FieldHours, "", `{"window_from":"2026-10-24","window_until":"2026-10-30","rows":[]}`)
+	if err := repo.Change.Apply(ctx, id, models.FieldUpdate{Hours: &hours}, hours); err != nil {
 		t.Fatal(err)
 	}
-	var open, close string
+	live, err := listHours(ctx, pool, cafeID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, h := range live {
+		s := ""
+		if h.Day != nil {
+			s += *h.Day
+		}
+		if h.ValidFrom != nil {
+			s += *h.ValidFrom
+		}
+		if h.Open != nil {
+			s += " " + *h.Open
+		}
+		got = append(got, s)
+	}
+	// Kept: 10-20 and 10-31 (outside the window). Replaced: the every-day row
+	// and 10-25 (inside).
+	want := " 09:00|mon|2026-10-20|2026-10-28 10:00|2026-10-31"
+	if strings.Join(got, "|") != want {
+		t.Fatalf("rows after apply: %q, want %q", strings.Join(got, "|"), want)
+	}
 	var fresh bool
-	if err := pool.QueryRow(ctx, `
-		SELECT TO_CHAR(open_hour,'HH24:MI'), TO_CHAR(close_hour,'HH24:MI'), updated_at > now() - interval '1 minute'
-		FROM cafe WHERE id = $1`, cafeID).Scan(&open, &close, &fresh); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT updated_at > now() - interval '1 minute' FROM cafe WHERE id = $1`, cafeID).Scan(&fresh); err != nil {
 		t.Fatal(err)
 	}
-	if open != "09:00" || close != "21:00" || !fresh {
-		t.Fatalf("got %s-%s fresh=%v", open, close, fresh)
+	if !fresh {
+		t.Fatal("cafe.updated_at not bumped")
 	}
 
 	// Second approval of the same proposal must fail and change nothing.
-	err := repo.Change.Apply(ctx, id, models.FieldUpdate{OpenHour: strp("01:00"), CloseHour: strp("02:00")}, nil)
+	err = repo.Change.Apply(ctx, id, models.FieldUpdate{Hours: &models.HoursProposal{WindowFrom: "2026-10-24", WindowUntil: "2026-10-30"}}, nil)
 	if !errors.Is(err, ErrProposalNotPending) {
 		t.Fatalf("want ErrProposalNotPending, got %v", err)
 	}

@@ -98,18 +98,6 @@ func displayValue(field string, raw []byte) string {
 	if len(raw) == 0 || string(raw) == "null" {
 		return "—"
 	}
-	if field == "hours" {
-		var h struct {
-			Open  *string `json:"open"`
-			Close *string `json:"close"`
-		}
-		if json.Unmarshal(raw, &h) == nil {
-			if h.Open == nil && h.Close == nil {
-				return "—"
-			}
-			return deref(h.Open) + " – " + deref(h.Close)
-		}
-	}
 	var s string
 	if json.Unmarshal(raw, &s) == nil {
 		return s
@@ -135,6 +123,7 @@ func hoursDays(raw []byte) []string {
 	var h struct {
 		Days []struct {
 			Day     string `json:"day"`
+			Date    string `json:"date"`
 			Hours   string `json:"hours"`
 			Special bool   `json:"special"`
 		} `json:"days"`
@@ -144,21 +133,17 @@ func hoursDays(raw []byte) []string {
 	}
 	out := make([]string, 0, len(h.Days))
 	for _, d := range h.Days {
-		line := d.Day + ": " + d.Hours
+		line := d.Day
+		if d.Date != "" {
+			line += " " + d.Date
+		}
+		line += ": " + d.Hours
 		if d.Special {
 			line += " (special hours)"
 		}
 		out = append(out, line)
 	}
 	return out
-}
-
-func hoursPart(raw []byte, key string) string {
-	var h map[string]*string
-	if json.Unmarshal(raw, &h) != nil {
-		return ""
-	}
-	return deref(h[key])
 }
 
 func jsonString(raw []byte) string {

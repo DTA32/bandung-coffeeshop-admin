@@ -143,3 +143,13 @@ func dayHoursCls(d models.DayHours) string {
 	}
 	return "text-forest"
 }
+
+// approvable reports whether a non-informational proposal can be approved
+// as-is or edited: an hours proposal must be in the per-day shape.
+func approvable(p models.Proposal) bool {
+	if p.Field != models.FieldHours {
+		return true
+	}
+	_, ok := models.ParseHoursProposal(p.NewValue)
+	return ok
+}

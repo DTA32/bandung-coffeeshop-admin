@@ -36,32 +36,32 @@ templ ChangesPage(groups []models.CafeProposals, cafeFilter int, next, ok, errMs
 // ChangeGroups renders cafe groups of proposals plus the next-page sentinel
 // (full page and fragment responses).
 templ ChangeGroups(groups []models.CafeProposals, next string) {
-for _, g := range groups {
-	<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) } data-change-group>
-		<div class="flex flex-wrap items-center justify-between gap-2">
-			<div class="flex items-baseline gap-2">
-				<a class="text-base font-bold text-forest hover:underline" href={ templ.URL("/cafes/" + g.LocationID) }>{ g.CafeName }</a>
-				<span class="text-xs text-bark">{ g.LocationID }</span>
+	for _, g := range groups {
+		<section class={ cardCls } id={ "cafe-" + itoa(g.CafeID) } data-change-group>
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<div class="flex items-baseline gap-2">
+					<a class="text-base font-bold text-forest hover:underline" href={ templ.URL("/cafes/" + g.LocationID) }>{ g.CafeName }</a>
+					<span class="text-xs text-bark">{ g.LocationID }</span>
+				</div>
+				if hasApplicable(g.Items) {
+					<form
+						method="post"
+						action={ templ.URL("/changes/cafe/" + itoa(g.CafeID) + "/approve-all") }
+					>
+						<button class={ btnOutlineSmCls } type="submit" data-confirm="Approve every proposed value for this cafe as-is?">
+							@Icon("check", 14)
+							Approve all
+						</button>
+					</form>
+				}
 			</div>
-			if hasApplicable(g.Items) {
-				<form
-					method="post"
-					action={ templ.URL("/changes/cafe/" + itoa(g.CafeID) + "/approve-all") }
-				>
-					<button class={ btnOutlineSmCls } type="submit" data-confirm="Approve every proposed value for this cafe as-is?">
-						@Icon("check", 14)
-						Approve all
-					</button>
-				</form>
-			}
-		</div>
-		<div class="flex flex-col">
-			for _, p := range g.Items {
-				@ProposalRow(p, "")
-			}
-		</div>
-	</section>
-}
+			<div class="flex flex-col">
+				for _, p := range g.Items {
+					@ProposalRow(p, "")
+				}
+			</div>
+		</section>
+	}
 	@LoadMore(next)
 }
 
@@ -93,6 +93,13 @@ templ ProposalRow(p models.Proposal, errMsg string) {
 						<div class="mt-1 whitespace-pre-wrap">{ displayValue(p.Field, p.OldValue) }</div>
 					</details>
 				}
+			} else if p.Field == "hours" {
+				if rows, ok := hoursComparison(p); ok {
+					@hoursCompareTable(rows)
+				} else {
+					<p class="m-0 text-xs text-red-600">This hours proposal is in an old format and cannot be approved; reject it.</p>
+					<pre class="m-0 overflow-x-auto whitespace-pre-wrap break-words rounded-xl bg-forest-lighter p-3 text-xs">{ prettyJSON(p.NewValue) }</pre>
+				}
 			} else {
 				<div class="grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-1">
 					<span class={ labelCls }>Now</span>
@@ -114,7 +121,7 @@ templ ProposalRow(p models.Proposal, errMsg string) {
 			</div>
 			if days := hoursDays(p.NewValue); len(days) > 0 {
 				<details class="text-xs text-bark">
-					<summary class="cursor-pointer">Per-day hours from Google</summary>
+					<summary class="cursor-pointer">Raw hours from Google</summary>
 					<ul class="mt-1 pl-4">
 						for _, d := range days {
 							<li>{ d }</li>
@@ -135,32 +142,36 @@ templ ProposalRow(p models.Proposal, errMsg string) {
 					hx-disabled-elt="this"
 				>Dismiss</button>
 			} else {
-				<button
-					class={ btnPrimarySmCls }
-					hx-post={ "/changes/" + i64(p.ID) + "/approve" }
-					hx-target={ "#proposal-" + i64(p.ID) }
-					hx-swap="outerHTML"
-					hx-disabled-elt="this"
-				>
-					@Icon("check", 14)
-					Approve
-				</button>
-				<details>
-					<summary class={ "list-none cursor-pointer", btnOutlineSmCls }>
-						@Icon("pencil", 14)
-						Edit & approve
-					</summary>
-					<form
-						class="mt-2 flex flex-col gap-1"
+				if approvable(p) {
+					<button
+						class={ btnPrimarySmCls }
 						hx-post={ "/changes/" + i64(p.ID) + "/approve" }
 						hx-target={ "#proposal-" + i64(p.ID) }
 						hx-swap="outerHTML"
+						hx-disabled-elt="this"
 					>
-						<input type="hidden" name="edit" value="1"/>
-						@proposalEditInputs(p)
-						<button class={ btnPrimarySmCls } type="submit">Save & approve</button>
-					</form>
-				</details>
+						@Icon("check", 14)
+						Approve
+					</button>
+				}
+				if p.Field != "hours" {
+					<details>
+						<summary class={ "list-none cursor-pointer", btnOutlineSmCls }>
+							@Icon("pencil", 14)
+							Edit & approve
+						</summary>
+						<form
+							class="mt-2 flex flex-col gap-1"
+							hx-post={ "/changes/" + i64(p.ID) + "/approve" }
+							hx-target={ "#proposal-" + i64(p.ID) }
+							hx-swap="outerHTML"
+						>
+							<input type="hidden" name="edit" value="1"/>
+							@proposalEditInputs(p)
+							<button class={ btnPrimarySmCls } type="submit">Save & approve</button>
+						</form>
+					</details>
+				}
 				<button
 					class={ "justify-center", btnDeleteSmCls }
 					hx-post={ "/changes/" + i64(p.ID) + "/reject" }
@@ -173,14 +184,41 @@ templ ProposalRow(p models.Proposal, errMsg string) {
 				</button>
 			}
 		</div>
+		if p.Field == "hours" && approvable(p) {
+			@hoursEditApprove(p)
+		}
 	</div>
+}
+
+// hoursEditApprove is "Edit & approve" for an hours proposal: the per-day
+// editor prefilled with the proposed rows, full width under the row. The
+// window is not editable; it comes from the proposal.
+templ hoursEditApprove(p models.Proposal) {
+	{{ from, until := hoursWindow(p.NewValue) }}
+	<details class="md:col-span-3">
+		<summary class={ "w-fit list-none cursor-pointer", btnOutlineSmCls }>
+			@Icon("pencil", 14)
+			Edit & approve
+		</summary>
+		<form
+			class="mt-3 flex flex-col gap-3 rounded-xl border border-grove-light p-4"
+			hx-post={ "/changes/" + i64(p.ID) + "/approve" }
+			hx-target={ "#proposal-" + i64(p.ID) }
+			hx-swap="outerHTML"
+		>
+			<input type="hidden" name="edit" value="1"/>
+			<p class="m-0 text-xs text-bark">
+				Approving replaces the regular hours and the special dates between { from } and { until }.
+				Special dates outside those days are kept.
+			</p>
+			@HoursEditor(hoursProposalRows(p.NewValue))
+			<button class={ "w-fit", btnPrimarySmCls } type="submit">Save & approve</button>
+		</form>
+	</details>
 }
 
 templ proposalEditInputs(p models.Proposal) {
 	switch p.Field {
-		case "hours":
-			<input class={ inputCls } name="open" value={ hoursPart(p.NewValue, "open") } placeholder="10:00" aria-label="Open hour (HH:MM)"/>
-			<input class={ inputCls } name="close" value={ hoursPart(p.NewValue, "close") } placeholder="22:00" aria-label="Close hour (HH:MM)"/>
 		case "status":
 			<select class={ inputCls } name="value" aria-label="Status">
 				<option value="closed" selected?={ jsonString(p.NewValue) == "closed" }>closed</option>

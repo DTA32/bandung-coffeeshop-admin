@@ -6,8 +6,6 @@ func TestDisplayValue(t *testing.T) {
 	cases := []struct {
 		field, raw, want string
 	}{
-		{"hours", `{"open":"08:00","close":"22:00"}`, "08:00 – 22:00"},
-		{"hours", `{"open":null,"close":null}`, "—"},
 		{"phone", `"+62227777"`, "+62227777"},
 		{"temp_closed", `true`, "yes"},
 		{"menu_content", `{"url":"https://x/menu.pdf","hash":"abc"}`, "https://x/menu.pdf"},
@@ -22,8 +20,8 @@ func TestDisplayValue(t *testing.T) {
 }
 
 func TestHoursDays(t *testing.T) {
-	got := hoursDays([]byte(`{"open":"08:00","close":"22:00","days":[{"day":"Senin","hours":"08.00–22.00"},{"day":"Selasa","hours":"Tutup","special":true}]}`))
-	if len(got) != 2 || got[1] != "Selasa: Tutup (special hours)" {
+	got := hoursDays([]byte(`{"window_from":"2026-10-26","window_until":"2026-10-27","rows":[],"days":[{"day":"Senin","date":"2026-10-26","hours":"08.00–22.00"},{"day":"Selasa","date":"2026-10-27","hours":"Tutup","special":true}]}`))
+	if len(got) != 2 || got[1] != "Selasa 2026-10-27: Tutup (special hours)" {
 		t.Fatalf("%v", got)
 	}
 }
