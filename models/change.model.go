@@ -65,18 +65,10 @@ type CafeProposals struct {
 	Items      []Proposal
 }
 
-// HoursValue is new_value for FieldHours.
-type HoursValue struct {
-	Open  *string         `json:"open"`
-	Close *string         `json:"close"`
-	Days  json.RawMessage `json:"days,omitempty"`
-}
-
 // FieldUpdate is a validated value to write for an applied field proposal.
 type FieldUpdate struct {
-	Text      *string // phone, menu, address, status
-	OpenHour  *string // hours
-	CloseHour *string // hours
+	Text  *string        // phone, menu, address, status
+	Hours *HoursProposal // hours: window + rows (new_value shape in cafe_hour.model.go)
 }
 
 // BatchFailure is one item of a batch that could not be processed.

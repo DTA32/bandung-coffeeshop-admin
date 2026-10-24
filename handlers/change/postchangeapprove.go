@@ -23,7 +23,7 @@ func (h *PostChangeApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	}
 	var edit *controllers.Edit
 	if r.PostForm.Get("edit") != "" {
-		edit = &controllers.Edit{Value: r.PostForm.Get("value"), Open: r.PostForm.Get("open"), Close: r.PostForm.Get("close")}
+		edit = &controllers.Edit{Value: r.PostForm.Get("value"), Hours: handlers.ParseHours(r.PostForm)}
 	}
 	p, err := h.Ctl.Change.Approve(r.Context(), id, edit)
 	renderProposalResult(h.Handler, w, r, p, err, models.StatusApproved)

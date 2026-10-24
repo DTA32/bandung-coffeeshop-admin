@@ -27,7 +27,7 @@ make test         # go test ./... -race -cover
 go vet ./...
 make fmt          # templ fmt + go fmt
 
-# Repository integration tests run only against a migrated database (001–012):
+# Repository integration tests run only against a migrated database (001–013):
 ADMIN_TEST_DSN='postgres://postgres:postgres@localhost:5432/bandung_coffeeshop?sslmode=disable' go test ./repository
 
 docker build -t bandung-coffeeshop-admin .
@@ -82,10 +82,10 @@ BCF-25), `review` (`cafe_review` + its `cafe_rating` rows, BE migrations 011 + 0
 (`cafes.templ`). `change` and `post` share the `change_proposal` table, so the lock/resolve/get/reject helpers
 are package functions in `repository/change.repository.go`.
 
-Transactions (all in `repository/`): `CafeRepository.Create/Update` (location + cafe + price/tags/images),
+Transactions (all in `repository/`): `CafeRepository.Create/Update` (location + cafe + price/hours/tags/images),
 `ReviewRepository.SetStatus/SetPinned` (row locked `FOR UPDATE`), `ReviewRepository.ReplaceRatings`,
 `ReviewRepository.CreatePartnership/UpdatePartnership` (review + ratings), `LocationRepository.Create/Update` (location + images), `TagRepository.Delete` (cafe_tag + tag),
-`ChangeRepository.Apply` (live column + proposal resolve + `cafe.updated_at`/`location.updated_at` bump),
+`ChangeRepository.Apply` (live column or windowed `cafe_hour` replace + proposal resolve + `cafe.updated_at`/`location.updated_at` bump),
 `ChangeRepository.Reject` / `PostRepository.Ignore`, `PostRepository.CreateFeed` (cafe_feed insert + proposal
 approve). Controllers never open a transaction.
 
@@ -99,7 +99,7 @@ covered by the gated `repository` integration tests.
 
 - `/` dashboard (pending changes / posts / reviews, failing sources, active / deleted users, last run per source)
 - `/cafes`, `/cafes/new`, `/cafes/{location_id}` — full cafe form (basics, details incl. weather / phone /
-  menu / status, Leaflet coordinates, "About this cafe" EN / ID = `cafe.description(_indo)` (empty → NULL; the
+  menu / status, per-day opening hours + a 7-day preview, Leaflet coordinates, "About this cafe" EN / ID = `cafe.description(_indo)` (empty → NULL; the
   address stays in `location.description(_indo)`), pricing, tags, ordered images); soft delete. Reviews and
   ratings are not on the cafe form any more (see `/reviews`). The list
   sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`) and
@@ -174,11 +174,43 @@ tag toggles, `data-confirm`, "Saving..." labels). Saving a cafe/location returns
 
 Approving a field writes the live column, marks the proposal `approved` with `resolved_value`, and
 sets `cafe.updated_at = now()` (plus `location.updated_at` for `address` / `status`) — one transaction
-(`ChangeRepository.Apply` in `repository/change.repository.go`; the field -> column validation is `controllers.FieldUpdateFor`). Field → column: `hours` → `cafe.open_hour/close_hour`, `phone` →
+(`ChangeRepository.Apply` in `repository/change.repository.go`; the field -> column validation is `controllers.FieldUpdateFor`). Field → column: `hours` → `cafe_hour` rows (see "Opening hours" below), `phone` →
 `cafe.phone`, `menu` → `cafe.menu` (approval requires an http(s) URL; only the cafe form also accepts `#image-N` gallery hashes), `address` → `location.description` (the address lives there;
 `description_indo` is never touched), `status` → `location.status`. Reject/dismiss/ignore =
 `rejected`; the scraper never re-proposes a rejected value. A post approval inserts `cafe_feed` and
 stores `{"cafe_feed_id": n}`.
+
+### Opening hours (BCF-19; schema = BE migration 013)
+
+A `cafe_hour` row has `day` (`day_enum` mon..sun, null = every day), `open_hour` / `close_hour`,
+`valid_from` / `valid_until` (null on both = regular hours, otherwise a dated "special" row, `valid_until`
+inclusive; a row with one bound is still dated) and `close`. Rules (shared with be and scraper; the BE
+CLAUDE.md "Opening hours" is the source): for date D use the first tier that has rows — (a) dated rows
+covering D, a matching day beating a null day; (b) undated rows for D's weekday; (c) undated null-day rows.
+Several rows in a tier = split hours; a closed row wins in its tier; no row / null hours = unknown;
+close < open = overnight; 24h = `00:00–23:59`; dates are Jakarta (`models.Jakarta`, fixed UTC+7).
+`models.ResolveDay` / `ResolveDays` (`models/cafe_hour.model.go`) port `bandung-coffeeshop-be`
+`service/cafe.go` — keep them in sync.
+
+- Cafe form: `templates.HoursEditor` (every-day row, mon..sun, each with ranges + "Closed", "Add another time
+  range", and a list of special dates from / until (blank = same day) / optional weekday). It posts the
+  parallel lists `hours_group` / `hours_open` / `hours_close` (one per range row), `hours_closed` (closed group
+  keys) and `special_key` / `special_from` / `special_until` / `special_day`; group keys are `all`, mon..sun or
+  a special key. `handlers.ParseHours` turns them into rows, `controllers.NormalizeHours` validates (HH:MM, open
+  + close both set, no hours on a closed row, not closed and open for the same day / dates, YYYY-MM-DD,
+  from <= until) and sorts. Saving deletes and re-inserts all the cafe's rows in the cafe transaction
+  (`replaceAllHours`). JS (add / remove, "Closed" disables the ranges) is delegated in `forms.js`.
+- `hours` proposal `new_value` (scraper): `{"window_from", "window_until", "rows": [{day, open, close,
+  valid_from, valid_until, closed}], "days": [raw scraped days]}` (`models.HoursProposal`); the queue's
+  current value is `{"rows": [...]}`, the live rows in that shape. The queue shows a current-vs-proposed table
+  per date of the window (changed days highlighted, special days marked). Approve (and "Edit & approve", the
+  same editor prefilled with the proposed rows; the window is fixed) replaces the undated rows plus the dated
+  rows overlapping `[window_from, window_until]` and keeps dated rows outside it (`models.ReplacedByWindow`,
+  `replaceWindowHours`), bumping `cafe.updated_at` in the same transaction; proposed dated rows must overlap
+  the window. A proposal that does not parse in this shape (the old `{open, close, days}`) shows its raw JSON
+  and can only be rejected.
+- Deploy order: BE migration 013 → this admin (+ be and scraper on `cafe_hour`) → 014 (drops
+  `cafe.open_hour/close_hour`). This admin fails on a database without 013.
 
 ### Review rules (BCF-31; schema = BE migrations 011 + 012)
 
@@ -207,7 +239,8 @@ stores `{"cafe_feed_id": n}`.
 ### Data conventions
 
 - Timestamps are `timestamp without time zone` in UTC; the UI shows and accepts `DISPLAY_TZ`.
-- Opening hours: single `open_hour`/`close_hour`; overnight = close < open; 24h = `00:00–23:59`.
+- Opening hours: `cafe_hour` rows (BE migration 013; `cafe.open_hour/close_hour` are never read or written
+  here and are dropped by 014). See "Opening hours" below.
 - `cafe_feed.images` and `location_image.url` hold full `https://image.bdgcafe.com/...` URLs;
   scraped Instagram media lives under R2 `ig/` (watermark bypassed).
 - `cafe.weather` is NOT NULL — always pass a non-nil slice.

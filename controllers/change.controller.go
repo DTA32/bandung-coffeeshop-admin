@@ -45,11 +45,11 @@ func GroupByCafe(items []models.Proposal) []models.CafeProposals {
 }
 
 // Edit is the admin's replacement for a proposed value ("edit & approve").
-// Value is used for single-value fields, Open/Close for hours.
+// Value is used for single-value fields, Hours (the per-day editor's rows)
+// for hours; the hours window always comes from the proposal.
 type Edit struct {
 	Value string
-	Open  string
-	Close string
+	Hours []models.CafeHour
 }
 
 // FieldUpdateFor turns a proposal (and an optional admin edit) into the
@@ -60,24 +60,11 @@ func FieldUpdateFor(p models.Proposal, edit *Edit) (models.FieldUpdate, any, err
 	}
 
 	if p.Field == models.FieldHours {
-		var hv models.HoursValue
-		if edit != nil {
-			hv.Open, hv.Close = strPtr(edit.Open), strPtr(edit.Close)
-		} else if err := json.Unmarshal(p.NewValue, &hv); err != nil {
-			return models.FieldUpdate{}, nil, fmt.Errorf("decode hours: %w", err)
-		}
-		hv.Open, hv.Close = NilIfBlank(hv.Open), NilIfBlank(hv.Close)
-		if hv.Open == nil || hv.Close == nil {
-			return models.FieldUpdate{}, nil, invalid("both open and close hours are required")
-		}
-		if err := validateHour(hv.Open); err != nil {
+		hp, err := hoursUpdate(p, edit)
+		if err != nil {
 			return models.FieldUpdate{}, nil, err
 		}
-		if err := validateHour(hv.Close); err != nil {
-			return models.FieldUpdate{}, nil, err
-		}
-		return models.FieldUpdate{OpenHour: hv.Open, CloseHour: hv.Close},
-			map[string]string{"open": *hv.Open, "close": *hv.Close}, nil
+		return models.FieldUpdate{Hours: &hp}, hp, nil
 	}
 
 	var v string
@@ -104,6 +91,32 @@ func FieldUpdateFor(p models.Proposal, edit *Edit) (models.FieldUpdate, any, err
 		return models.FieldUpdate{}, nil, invalid("unknown field %q", p.Field)
 	}
 	return models.FieldUpdate{Text: &v}, v, nil
+}
+
+// hoursUpdate validates an hours proposal (or the admin's edit of it). The
+// rows replace the cafe's undated rows and its dated rows overlapping the
+// window, so a dated row must overlap the window too. The result (window +
+// normalised rows, no raw days) is also the resolved_value.
+func hoursUpdate(p models.Proposal, edit *Edit) (models.HoursProposal, error) {
+	hp, ok := models.ParseHoursProposal(p.NewValue)
+	if !ok {
+		return models.HoursProposal{}, invalid("this hours proposal is in an old format; reject it")
+	}
+	rows := hp.Rows
+	if edit != nil {
+		rows = edit.Hours
+	}
+	rows, err := NormalizeHours(rows)
+	if err != nil {
+		return models.HoursProposal{}, err
+	}
+	for _, h := range rows {
+		if h.Dated() && !models.ReplacedByWindow(h, hp.WindowFrom, hp.WindowUntil) {
+			return models.HoursProposal{}, invalid("%s is outside this proposal's dates (%s – %s); add it on the cafe form",
+				HourRowLabel(h), hp.WindowFrom, hp.WindowUntil)
+		}
+	}
+	return models.HoursProposal{WindowFrom: hp.WindowFrom, WindowUntil: hp.WindowUntil, Rows: rows}, nil
 }
 
 func (c *ChangeController) Approve(ctx context.Context, id int64, edit *Edit) (*models.Proposal, error) {

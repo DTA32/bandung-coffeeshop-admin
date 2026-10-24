@@ -14,16 +14,18 @@ func TestNormalizeCafe(t *testing.T) {
 		Name:      "  Savor  ",
 		Instagram: ptr(" @savor.kogi "),
 		Phone:     ptr("  "),
-		OpenHour:  ptr("08:00"),
-		CloseHour: ptr(""),
+		Hours:     []models.CafeHour{{Day: ptr("tue"), Open: ptr(" 08:00 "), Close: ptr("22:00")}, {Closed: true, Day: ptr("mon")}},
 		About:     ptr("  "),
 		Images:    []models.Image{{URL: " https://a/1.jpg "}, {URL: ""}},
 	}
 	if err := NormalizeCafe(&c); err != nil {
 		t.Fatal(err)
 	}
-	if c.Name != "Savor" || c.Status != "active" || *c.Instagram != "savor.kogi" || c.Phone != nil || c.CloseHour != nil {
+	if c.Name != "Savor" || c.Status != "active" || *c.Instagram != "savor.kogi" || c.Phone != nil {
 		t.Fatalf("unexpected normalisation: %+v", c)
+	}
+	if len(c.Hours) != 2 || *c.Hours[0].Day != "mon" || !c.Hours[0].Closed || *c.Hours[1].Open != "08:00" {
+		t.Fatalf("hours must be trimmed and sorted mon→sun: %+v", c.Hours)
 	}
 	if c.Weather == nil || len(c.Weather) != 0 {
 		t.Fatalf("weather must default to an empty, non-nil slice (column is NOT NULL)")
@@ -42,7 +44,7 @@ func TestNormalizeCafe(t *testing.T) {
 	}{
 		{"no name", func(c *models.Cafe) { c.Name = " " }, "name is required"},
 		{"bad status", func(c *models.Cafe) { c.Status = "gone" }, "invalid status"},
-		{"bad hour", func(c *models.Cafe) { c.OpenHour = ptr("24:00") }, "invalid hour"},
+		{"bad hour", func(c *models.Cafe) { c.Hours = []models.CafeHour{{Open: ptr("24:00"), Close: ptr("02:00")}} }, "invalid hour"},
 		{"bad weather", func(c *models.Cafe) { c.Weather = []string{"snow"} }, "invalid weather"},
 		{"bad menu", func(c *models.Cafe) { c.Menu = ptr("drive.google.com/x") }, "menu must be"},
 		{"bad menu gallery", func(c *models.Cafe) { c.Menu = ptr("#image-0") }, "menu must be"},

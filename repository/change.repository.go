@@ -23,11 +23,19 @@ func NewChangeRepository(db *pgxpool.Pool) *ChangeRepository {
 }
 
 // currentValueSQL renders the live value of a proposal's field as jsonb, so
-// the queue can show "now" next to "proposed".
+// the queue can show "now" next to "proposed". For hours it is the cafe's
+// cafe_hour rows in the proposal row shape: {"rows": [...]} (models.CurrentHours).
 const currentValueSQL = `
 	CASE p.field
-		WHEN 'hours'   THEN jsonb_build_object('open', TO_CHAR(c.open_hour, 'HH24:MI'),
-		                                       'close', TO_CHAR(c.close_hour, 'HH24:MI'))
+		WHEN 'hours'   THEN jsonb_build_object('rows', (
+			SELECT COALESCE(jsonb_agg(jsonb_build_object(
+				'day', h.day::text,
+				'open', TO_CHAR(h.open_hour, 'HH24:MI'), 'close', TO_CHAR(h.close_hour, 'HH24:MI'),
+				'valid_from', TO_CHAR(h.valid_from, 'YYYY-MM-DD'), 'valid_until', TO_CHAR(h.valid_until, 'YYYY-MM-DD'),
+				'closed', h.close)
+				ORDER BY h.valid_from NULLS FIRST, h.valid_until NULLS FIRST, h.day NULLS FIRST, h.close DESC, h.open_hour, h.id),
+				'[]'::jsonb)
+			FROM cafe_hour h WHERE h.cafe_id = c.id))
 		WHEN 'phone'   THEN to_jsonb(c.phone)
 		WHEN 'menu'    THEN to_jsonb(c.menu)
 		WHEN 'address' THEN to_jsonb(l.description)
@@ -171,9 +179,10 @@ func resolve(ctx context.Context, tx pgx.Tx, id int64, status string, resolved a
 	return err
 }
 
-// ApplyFieldProposal writes the value to the live tables, marks the proposal
-// approved and bumps cafe.updated_at (and location.updated_at when a location
-// column changed), all in one transaction.
+// Apply writes the value to the live tables, marks the proposal approved and
+// bumps cafe.updated_at (and location.updated_at when a location column
+// changed), all in one transaction. Hours replace the undated cafe_hour rows
+// and the dated rows overlapping the proposal's window (replaceWindowHours).
 func (r *ChangeRepository) Apply(ctx context.Context, id int64, u models.FieldUpdate, resolved any) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -188,9 +197,14 @@ func (r *ChangeRepository) Apply(ctx context.Context, id int64, u models.FieldUp
 
 	switch field {
 	case models.FieldHours:
-		_, err = tx.Exec(ctx, `
-			UPDATE cafe SET open_hour = $2::time, close_hour = $3::time, updated_at = NOW() WHERE id = $1
-		`, cafeID, u.OpenHour, u.CloseHour)
+		if u.Hours == nil {
+			return errors.New("hours update without rows")
+		}
+		// Bumping updated_at first also locks the cafe row against a
+		// concurrent cafe form save.
+		if _, err = tx.Exec(ctx, `UPDATE cafe SET updated_at = NOW() WHERE id = $1`, cafeID); err == nil {
+			err = replaceWindowHours(ctx, tx, cafeID, u.Hours.WindowFrom, u.Hours.WindowUntil, u.Hours.Rows)
+		}
 	case models.FieldPhone:
 		_, err = tx.Exec(ctx, `UPDATE cafe SET phone = $2, updated_at = NOW() WHERE id = $1`, cafeID, u.Text)
 	case models.FieldMenu:

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/dta32/bandung-coffeeshop-admin/models"
 )
 
 func TestTouchTagBumpsOnlyCafeTag(t *testing.T) {
@@ -66,5 +68,36 @@ func TestTouchTagBumpsOnlyCafeTag(t *testing.T) {
 	}
 	if _, err := repo.Cafe.TouchTag(ctx, "zz-no-such-cafe", tagID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("unknown cafe: err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestCafeUpdateReplacesHours(t *testing.T) {
+	repo, pool, cafeID := testRepo(t)
+	ctx := context.Background()
+	var locID string
+	if err := pool.QueryRow(ctx, `SELECT location_id FROM cafe WHERE id = $1`, cafeID).Scan(&locID); err != nil {
+		t.Fatal(err)
+	}
+	c, err := repo.Cafe.Get(ctx, locID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Hours) != 1 || *c.Hours[0].Open != "08:00" || c.Hours[0].Day != nil {
+		t.Fatalf("created hours: %+v", c.Hours)
+	}
+	c.Hours = []models.CafeHour{
+		{Day: strp("mon"), Closed: true},
+		{Day: strp("sat"), Open: strp("08:00"), Close: strp("14:00")},
+		{ValidFrom: strp("2026-12-25"), ValidUntil: strp("2026-12-25"), Closed: true},
+	}
+	if err := repo.Cafe.Update(ctx, locID, *c); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Cafe.Get(ctx, locID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Hours) != 3 || *got.Hours[0].Day != "mon" || !got.Hours[0].Closed || *got.Hours[2].ValidFrom != "2026-12-25" {
+		t.Fatalf("hours after update: %+v", got.Hours)
 	}
 }

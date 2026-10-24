@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -78,4 +79,90 @@ func ParseImages(v url.Values) []models.Image {
 		out = append(out, im)
 	}
 	return out
+}
+
+// HoursAllDays is the hours editor group key of the default (every day) row;
+// the weekday groups use the day_enum values.
+const HoursAllDays = "all"
+
+// ParseHours reads the per-day hours editor (templates.HoursEditor) into
+// cafe_hour rows. The editor posts, per time range, the parallel lists
+// hours_group / hours_open / hours_close; hours_closed lists the closed
+// group keys; and per special date the parallel lists special_key /
+// special_from / special_until / special_day. Group keys are "all" (every
+// day), mon..sun, or a special_key. Blank ranges are skipped; a blank special
+// "until" means the same day as "from". A special date with neither hours nor
+// "Closed" still yields a row, so validation (controllers.NormalizeHours)
+// reports it instead of dropping it. Never fails: validation owns errors.
+func ParseHours(v url.Values) []models.CafeHour {
+	type group struct {
+		base   models.CafeHour
+		closed bool
+		ranges [][2]string
+	}
+	groups := map[string]*group{HoursAllDays: {}}
+	order := []string{HoursAllDays}
+	for _, d := range models.Weekdays {
+		day := d
+		groups[d] = &group{base: models.CafeHour{Day: &day}}
+		order = append(order, d)
+	}
+	from, until, days := v["special_from"], v["special_until"], v["special_day"]
+	for i, key := range v["special_key"] {
+		if _, dup := groups[key]; dup || key == "" {
+			continue
+		}
+		f := strings.TrimSpace(at(from, i))
+		u := strings.TrimSpace(at(until, i))
+		if u == "" {
+			u = f
+		}
+		g := &group{base: models.CafeHour{ValidFrom: &f, ValidUntil: &u}}
+		if d := strings.TrimSpace(at(days, i)); slices.Contains(models.Weekdays, d) {
+			g.base.Day = &d
+		}
+		groups[key] = g
+		order = append(order, key)
+	}
+	for _, key := range v["hours_closed"] {
+		if g, ok := groups[key]; ok {
+			g.closed = true
+		}
+	}
+	opens, closes := v["hours_open"], v["hours_close"]
+	for i, key := range v["hours_group"] {
+		g, ok := groups[key]
+		o, c := strings.TrimSpace(at(opens, i)), strings.TrimSpace(at(closes, i))
+		if !ok || (o == "" && c == "") {
+			continue
+		}
+		g.ranges = append(g.ranges, [2]string{o, c})
+	}
+
+	var out []models.CafeHour
+	for _, key := range order {
+		g := groups[key]
+		if g.closed {
+			h := g.base
+			h.Closed = true
+			out = append(out, h)
+		}
+		for _, r := range g.ranges {
+			h := g.base
+			o, c := r[0], r[1]
+			h.Open, h.Close = &o, &c
+			out = append(out, h)
+		}
+		if !g.closed && len(g.ranges) == 0 && g.base.Dated() {
+			out = append(out, g.base)
+		}
+	}
+	return out
+}
+
+func at(list []string, i int) string {
+	if i < len(list) {
+		return list[i]
+	}
+	return ""
 }

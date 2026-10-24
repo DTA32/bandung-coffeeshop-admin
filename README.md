@@ -45,6 +45,10 @@ static/          embedded CSS, JS, vendored libs
   partnership-only filters; approve, reject, pin / unpin and fix a review's ratings. Partnership reviews (no user
   account) are created, edited and removed here and published straight away. Needs BE migration 011 (and 012
   right after deploy).
+- Opening hours (BCF-19): the cafe form edits per-day hours (`cafe_hour`): an every-day default, mon–sun with
+  split ranges and a "Closed" toggle, and special dates (holidays, events). Scraped hours proposals show current
+  vs proposed per date and, when approved, replace the regular hours and the special dates inside the scraped
+  window. Needs BE migration 013 (014 drops the old `cafe.open_hour/close_hour` after rollout).
 - Cafe list: sort by least / most recently updated (`?sort=updated_asc|updated_desc`).
 - Lists load 50 rows at a time by infinite scroll (HTMX `revealed` sentinel; `?page=N` on the same URL, filters
   carried along; the `/changes` and `/posts` queues page by an `after=` cursor so approvals don't skip rows). Cafe and location search is server-side typeahead (`?q=`, case-insensitive match on name / id).
