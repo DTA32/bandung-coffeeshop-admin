@@ -51,8 +51,7 @@ type Cafe struct {
 	Instagram       *string
 	Phone           *string
 	Menu            *string
-	OpenHour        *string // HH:MM
-	CloseHour       *string // HH:MM
+	Hours           []CafeHour // cafe_hour rows; saving replaces them all
 	IsFeatured      bool
 	Weather         []string
 	Coordinates     *Coordinates

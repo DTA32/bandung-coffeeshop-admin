@@ -1,0 +1,168 @@
+package templates
+
+import "github.com/dta32/bandung-coffeeshop-admin/models"
+
+// HoursEditor is the per-day opening hours editor (cafe form and "Edit &
+// approve" of an hours proposal). Field names are read by
+// handlers.ParseHours; add / remove rows and the "Closed" toggles are
+// delegated JS in static/js/forms.js (data-hours-*), so it also works in
+// HTMX-swapped fragments.
+templ HoursEditor(rows []models.CafeHour) {
+	{{ e := newHoursEditor(rows) }}
+	<div class="flex flex-col gap-4" data-hours-editor>
+		<div class="flex flex-col divide-y divide-grove-light">
+			for _, g := range e.Regular {
+				<div class="grid grid-cols-1 gap-2 py-2 sm:grid-cols-[10rem_1fr]" data-hours-group={ g.Key }>
+					<span class="pt-2 text-sm font-semibold text-forest">{ g.Label }</span>
+					@hoursGroupBody(g)
+				</div>
+			}
+		</div>
+		<div class="flex flex-col gap-2">
+			<span class={ labelCls }>Special dates (holidays, events)</span>
+			<div class="flex flex-col gap-3 empty:hidden" data-hours-specials>
+				for _, s := range e.Specials {
+					@hoursSpecialRow(s)
+				}
+			</div>
+			<button type="button" class={ btnOutlineCls } data-hours-add-special>
+				@Icon("plus", 14)
+				Add special date
+			</button>
+		</div>
+		<p class="m-0 text-xs text-bark">
+			A weekday left empty uses "Every day"; a date with special hours overrides both. Open 24 hours =
+			00:00 – 23:59. A close hour earlier than the open hour means it closes after midnight.
+		</p>
+		<template data-hours-range-template>
+			@hoursRange("", models.HourRange{}, true)
+		</template>
+		<template data-hours-special-template>
+			@hoursSpecialRow(hoursSpecial{hoursGroup: hoursGroup{Ranges: []models.HourRange{{}}}})
+		</template>
+	</div>
+}
+
+templ hoursSpecialRow(s hoursSpecial) {
+	<div class="flex flex-col gap-2 rounded-xl border border-grove-light p-3" data-hours-group={ s.Key } data-hours-special>
+		<input type="hidden" name="special_key" value={ s.Key }/>
+		<div class="flex flex-wrap items-end gap-2">
+			@Field("From") {
+				<input type="date" class={ inputCls } name="special_from" value={ s.From }/>
+			}
+			@Field("Until (empty = same day)") {
+				<input type="date" class={ inputCls } name="special_until" value={ s.Until }/>
+			}
+			@Field("Only on") {
+				<select class={ inputCls } name="special_day">
+					<option value="">any weekday</option>
+					for _, d := range models.Weekdays {
+						<option value={ d } selected?={ d == s.Day }>{ models.DayLabel(d) }</option>
+					}
+				</select>
+			}
+			<button type="button" class={ "ml-auto", btnIconDeleteCls } data-hours-remove-special aria-label="Remove special date">
+				@Icon("trash-2", 14)
+			</button>
+		</div>
+		@hoursGroupBody(s.hoursGroup)
+	</div>
+}
+
+// hoursGroupBody is a group's time ranges, its "Closed" toggle and the
+// "Add another time range" button.
+templ hoursGroupBody(g hoursGroup) {
+	<div class="flex flex-col gap-2">
+		<div class="flex flex-col gap-2" data-hours-ranges>
+			for i, r := range g.Ranges {
+				@hoursRange(g.Key, r, i > 0)
+			}
+		</div>
+		<div class="flex flex-wrap items-center gap-4">
+			<label class={ checkRowCls }>
+				<input type="checkbox" name="hours_closed" value={ g.Key } checked?={ g.Closed } data-hours-closed/>
+				<span class={ checkTextCls }>Closed</span>
+			</label>
+			<button type="button" class={ "flex items-center gap-1 text-xs disabled:opacity-40", inlineLinkCls } data-hours-add-range>
+				@Icon("plus", 12)
+				Add another time range
+			</button>
+		</div>
+	</div>
+}
+
+templ hoursRange(key string, r models.HourRange, removable bool) {
+	<div class="flex items-center gap-2" data-hours-range>
+		<input type="hidden" name="hours_group" value={ key }/>
+		<input class={ inputCls, "w-24" } name="hours_open" value={ r.Open } placeholder="08:00" inputmode="numeric" aria-label="Opens (HH:MM)"/>
+		<span class="text-bark">–</span>
+		<input class={ inputCls, "w-24" } name="hours_close" value={ r.Close } placeholder="22:00" inputmode="numeric" aria-label="Closes (HH:MM)"/>
+		if removable {
+			<button type="button" class={ btnIconDeleteCls } data-hours-remove-range aria-label="Remove time range">
+				@Icon("x", 14)
+			</button>
+		}
+	</div>
+}
+
+// HoursPreview lists the resolved hours of the next 7 days (Jakarta).
+templ HoursPreview(rows []models.CafeHour) {
+	<details class="text-sm">
+		<summary class={ "cursor-pointer", labelCls }>Saved hours for the next 7 days</summary>
+		<table class="mt-2 text-sm">
+			<tbody>
+				for _, d := range hoursPreview(rows) {
+					<tr>
+						<td class="py-0.5 pr-4 text-bark">{ shortDay(d.Date) }</td>
+						<td class={ "py-0.5 pr-2", dayHoursCls(d) }>{ d.String() }</td>
+						<td class="py-0.5">
+							if d.Special {
+								@specialPill()
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</details>
+}
+
+templ specialPill() {
+	<span class="rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">special</span>
+}
+
+// hoursCompareTable is the changes-queue view of an hours proposal: current vs
+// proposed, one line per date of the proposal's window; changed days are
+// highlighted.
+templ hoursCompareTable(rows []hoursCompareRow) {
+	<div class="overflow-x-auto">
+		<table class="w-full text-sm">
+			<thead>
+				<tr class="text-left">
+					<th class={ "py-1 pr-3", labelCls }>Date</th>
+					<th class={ "py-1 pr-3", labelCls }>Now</th>
+					<th class={ "py-1", labelCls }>Proposed</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, r := range rows {
+					<tr class={ templ.KV("bg-amber-50", r.Differs) }>
+						<td class="whitespace-nowrap py-1 pr-3 text-bark">{ shortDay(r.Current.Date) }</td>
+						<td class={ "py-1 pr-3", dayHoursCls(r.Current) }>
+							{ r.Current.String() }
+							if r.Current.Special {
+								@specialPill()
+							}
+						</td>
+						<td class={ "py-1", dayHoursCls(r.Proposed), templ.KV("font-semibold", r.Differs) }>
+							{ r.Proposed.String() }
+							if r.Proposed.Special {
+								@specialPill()
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}

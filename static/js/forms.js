@@ -1,6 +1,6 @@
 // Small progressive enhancements that replace the console's React state:
 // the Leaflet coordinate picker and geoman polygon editor, the orderable image list,
-// rating / tag toggles, /changes batch selection, confirm prompts and the "Saving..." button label.
+// the per-day hours editor, rating / tag toggles, /changes batch selection, confirm prompts and the "Saving..." button label.
 ;(function () {
   'use strict'
 
@@ -405,6 +405,54 @@
   })
   window.addEventListener('pageshow', syncBatch)
 
+  // Per-day hours editor (templates/hours.templ): add / remove time ranges and
+  // special dates, and "Closed" disables the group's ranges (disabled inputs are
+  // not posted, so hours_group / hours_open / hours_close stay aligned).
+  // Delegated, so editors inside HTMX-swapped proposal rows work too.
+  var hoursSeq = 0
+  function syncHoursClosed(group) {
+    var box = group.querySelector('[data-hours-closed]')
+    if (!box) return
+    group.querySelectorAll('[data-hours-range] input, [data-hours-range] button, [data-hours-add-range]').forEach(function (i) {
+      if (i.closest('[data-hours-group]') === group) i.disabled = box.checked
+    })
+  }
+  function syncAllHours() {
+    document.querySelectorAll('[data-hours-group]').forEach(syncHoursClosed)
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('button')
+    if (!btn) return
+    var editor = btn.closest('[data-hours-editor]')
+    if (!editor) return
+    if (btn.hasAttribute('data-hours-add-range')) {
+      var group = btn.closest('[data-hours-group]')
+      var row = editor.querySelector('[data-hours-range-template]').content.firstElementChild.cloneNode(true)
+      row.querySelector('input[name="hours_group"]').value = group.dataset.hoursGroup
+      group.querySelector('[data-hours-ranges]').appendChild(row)
+      row.querySelector('input[name="hours_open"]').focus()
+    } else if (btn.hasAttribute('data-hours-remove-range')) {
+      btn.closest('[data-hours-range]').remove()
+    } else if (btn.hasAttribute('data-hours-add-special')) {
+      var key = 'n' + Date.now().toString(36) + '-' + ++hoursSeq
+      var special = editor.querySelector('[data-hours-special-template]').content.firstElementChild.cloneNode(true)
+      special.dataset.hoursGroup = key
+      special.querySelectorAll('input[name="special_key"], input[name="hours_group"], input[name="hours_closed"]').forEach(function (i) {
+        i.value = key
+      })
+      editor.querySelector('[data-hours-specials]').appendChild(special)
+      special.querySelector('input[name="special_from"]').focus()
+    } else if (btn.hasAttribute('data-hours-remove-special')) {
+      btn.closest('[data-hours-special]').remove()
+    }
+  })
+  document.addEventListener('change', function (e) {
+    if (!(e.target.matches && e.target.matches('[data-hours-closed]'))) return
+    syncHoursClosed(e.target.closest('[data-hours-group]'))
+  })
+  document.body.addEventListener('htmx:afterSettle', syncAllHours)
+  window.addEventListener('pageshow', syncAllHours)
+
   // Selects with data-autosubmit submit their GET form on change (cafe list sort).
   document.addEventListener('change', function (e) {
     var sel = e.target.closest && e.target.closest('[data-autosubmit]')
@@ -451,6 +499,7 @@
     document.querySelectorAll('[data-location-type]').forEach(initLocationType)
     document.querySelectorAll('[data-images-editor]').forEach(initImagesEditor)
     document.querySelectorAll('[data-rating]').forEach(initRating)
+    syncAllHours()
     syncBatch()
   })
 })()

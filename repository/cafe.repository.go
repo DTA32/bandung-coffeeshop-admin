@@ -11,7 +11,7 @@ import (
 )
 
 // CafeRepository owns the cafe aggregate: location (type cafe) + cafe + price,
-// tags and images. Reviews and their ratings belong to ReviewRepository. Queries are ported from
+// hours (cafe_hour), tags and images. Reviews and their ratings belong to ReviewRepository. Queries are ported from
 // bandung-coffeeshop-be-console@252f8ed repository/admin_*.go.
 type CafeRepository struct {
 	db *pgxpool.Pool
@@ -84,7 +84,6 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 		SELECT l.id, l.name, l.description, l.description_indo, l.gmaps_id, l.status::text,
 		       ST_Y(ST_Centroid(l.coordinates)), ST_X(ST_Centroid(l.coordinates)),
 		       c.id, c.instagram, c.phone, c.menu,
-		       TO_CHAR(c.open_hour, 'HH24:MI'), TO_CHAR(c.close_hour, 'HH24:MI'),
 		       c.is_featured, c.weather, c.description, c.description_indo
 		FROM location l
 		JOIN cafe c ON c.location_id = l.id
@@ -92,7 +91,7 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 	`, id).Scan(
 		&p.ID, &p.Name, &p.Description, &p.DescriptionIndo, &p.GmapsID, &p.Status,
 		&lat, &lng,
-		&p.CafeID, &p.Instagram, &p.Phone, &p.Menu, &p.OpenHour, &p.CloseHour,
+		&p.CafeID, &p.Instagram, &p.Phone, &p.Menu,
 		&p.IsFeatured, &p.Weather, &p.About, &p.AboutIndo,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -116,6 +115,11 @@ func (r *CafeRepository) Get(ctx context.Context, id string) (*models.Cafe, erro
 		&p.Price.FoodPriceMin, &p.Price.FoodPriceMax,
 	)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	p.Hours, err = listHours(ctx, r.db, p.CafeID, false)
+	if err != nil {
 		return nil, err
 	}
 
@@ -167,11 +171,11 @@ func (r *CafeRepository) Create(ctx context.Context, p models.Cafe) error {
 
 	var cafeID int
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO cafe (location_id, instagram, phone, menu, open_hour, close_hour, is_featured, weather,
+		INSERT INTO cafe (location_id, instagram, phone, menu, is_featured, weather,
 			description, description_indo)
-		VALUES ($1, $2, $3, $4, $5::time, $6::time, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
-	`, p.ID, p.Instagram, p.Phone, p.Menu, p.OpenHour, p.CloseHour, p.IsFeatured, p.Weather,
+	`, p.ID, p.Instagram, p.Phone, p.Menu, p.IsFeatured, p.Weather,
 		p.About, p.AboutIndo).Scan(&cafeID); err != nil {
 		return err
 	}
@@ -216,10 +220,10 @@ func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) e
 
 	if _, err := tx.Exec(ctx, `
 		UPDATE cafe SET
-			instagram = $2, phone = $3, menu = $4, open_hour = $5::time, close_hour = $6::time,
-			is_featured = $7, weather = $8, description = $9, description_indo = $10, updated_at = NOW()
+			instagram = $2, phone = $3, menu = $4,
+			is_featured = $5, weather = $6, description = $7, description_indo = $8, updated_at = NOW()
 		WHERE id = $1
-	`, cafeID, p.Instagram, p.Phone, p.Menu, p.OpenHour, p.CloseHour, p.IsFeatured, p.Weather,
+	`, cafeID, p.Instagram, p.Phone, p.Menu, p.IsFeatured, p.Weather,
 		p.About, p.AboutIndo); err != nil {
 		return err
 	}
@@ -272,8 +276,12 @@ func coordArgs(c *models.Coordinates) (*float64, *float64) {
 }
 
 // writeCafeChildren upserts price/tags/images for a cafe, deleting tags and
-// images absent from the payload. Reviews and ratings are never touched here.
+// images absent from the payload, and replaces its cafe_hour rows. Reviews and
+// ratings are never touched here.
 func writeCafeChildren(ctx context.Context, tx pgx.Tx, locationID string, cafeID int, p models.Cafe) error {
+	if err := replaceAllHours(ctx, tx, cafeID, p.Hours); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO cafe_price (cafe_id, price_range_min, price_range_max,
 			coffee_price_min, coffee_price_max, snack_price_min, snack_price_max,

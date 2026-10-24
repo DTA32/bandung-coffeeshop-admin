@@ -11,7 +11,7 @@ import (
 	"github.com/dta32/bandung-coffeeshop-admin/models"
 )
 
-// Integration tests run against a real, migrated database (001–008) and only
+// Integration tests run against a real, migrated database (001–013) and only
 // when ADMIN_TEST_DSN is set, e.g.
 //
 //	ADMIN_TEST_DSN='postgres://postgres:postgres@localhost:55432/bandung_coffeeshop?sslmode=disable' go test ./repository
@@ -29,7 +29,7 @@ func testRepo(t *testing.T) (*Repositories, *pgxpool.Pool, int) {
 	locID := "zz-test-" + time.Now().Format("150405.000000")
 	locID = sanitize(locID)
 	if err := repo.Cafe.Create(ctx, models.Cafe{ID: locID, Name: "Test", Status: "active", Weather: []string{},
-		OpenHour: strp("08:00"), CloseHour: strp("22:00")}); err != nil {
+		Hours: []models.CafeHour{{Open: strp("08:00"), Close: strp("22:00")}}}); err != nil {
 		t.Fatal(err)
 	}
 	var cafeID int

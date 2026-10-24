@@ -14,8 +14,10 @@ func TestParseCafeForm(t *testing.T) {
 		"status":          {"active"},
 		"instagram":       {"savor.kogi"},
 		"phone":           {""},
-		"open_hour":       {"08:00"},
-		"close_hour":      {"00:00"},
+		"hours_group":     {"all", "mon"},
+		"hours_open":      {"08:00", ""},
+		"hours_close":     {"00:00", ""},
+		"hours_closed":    {"mon"},
 		"is_featured":     {"1"},
 		"weather":         {"clear", "rain"},
 		"lat":             {"-6.8864916"},
@@ -33,7 +35,7 @@ func TestParseCafeForm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.ID != "savor-kogi" || !c.IsFeatured || c.Phone != nil || *c.OpenHour != "08:00" || len(c.Weather) != 2 {
+	if c.ID != "savor-kogi" || !c.IsFeatured || c.Phone != nil || len(c.Hours) != 2 || *c.Hours[0].Open != "08:00" || !c.Hours[1].Closed || len(c.Weather) != 2 {
 		t.Fatalf("basics: %+v", c)
 	}
 	if c.Coordinates == nil || c.Coordinates.Lat != -6.8864916 || c.Coordinates.Lng != 107.59529 {

@@ -89,14 +89,11 @@ func NormalizeCafe(p *models.Cafe) error {
 	if p.Menu != nil && !isMenuValue(*p.Menu) {
 		return invalid("menu must be an http(s) URL or #image-N (N >= 1)")
 	}
-	p.OpenHour = NilIfBlank(p.OpenHour)
-	p.CloseHour = NilIfBlank(p.CloseHour)
-	if err := validateHour(p.OpenHour); err != nil {
+	hours, err := NormalizeHours(p.Hours)
+	if err != nil {
 		return err
 	}
-	if err := validateHour(p.CloseHour); err != nil {
-		return err
-	}
+	p.Hours = hours
 
 	if p.Weather == nil {
 		p.Weather = []string{}

@@ -154,15 +154,6 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 				@Field("Instagram handle") {
 					<input class={ inputCls } name="instagram" value={ deref(c.Instagram) } placeholder="without @"/>
 				}
-				@Field("Open hour (HH:MM)") {
-					<input class={ inputCls } name="open_hour" value={ deref(c.OpenHour) } placeholder="10:00"/>
-				}
-				@Field("Close hour (HH:MM)") {
-					<input class={ inputCls } name="close_hour" value={ deref(c.CloseHour) } placeholder="22:00"/>
-				}
-			</div>
-			<p class="m-0 text-xs text-bark">Open 24 hours = 00:00 – 23:59. A close hour earlier than the open hour means it closes after midnight.</p>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				@Field("Phone") {
 					<input class={ inputCls } name="phone" value={ deref(c.Phone) } placeholder="+6281234567890"/>
 				}
@@ -186,6 +177,14 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 					}
 				</div>
 			</div>
+		</section>
+		// Opening hours (cafe_hour rows; saving replaces them all)
+		<section class={ cardCls }>
+			<h2 class={ sectionTitle }>Opening hours</h2>
+			@HoursEditor(c.Hours)
+			if !isNew && errMsg == "" {
+				@HoursPreview(c.Hours)
+			}
 		</section>
 		// Location
 		<section class={ cardCls }>
