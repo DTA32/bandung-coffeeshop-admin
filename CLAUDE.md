@@ -190,7 +190,7 @@ covering D, a matching day beating a null day; (b) undated rows for D's weekday;
 Several rows in a tier = split hours; a closed row wins in its tier; no row / null hours = unknown;
 close < open = overnight; 24h = `00:00–23:59`; dates are Jakarta (`models.Jakarta`, fixed UTC+7).
 `models.ResolveDay` / `ResolveDays` (`models/cafe_hour.model.go`) port `bandung-coffeeshop-be`
-`service/hours.go` — keep them in sync.
+`service/cafe.go` — keep them in sync.
 
 - Cafe form: `templates.HoursEditor` (every-day row, mon..sun, each with ranges + "Closed", "Add another time
   range", and a list of special dates from / until (blank = same day) / optional weekday). It posts the

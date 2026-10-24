@@ -177,7 +177,7 @@ func hourTier(h CafeHour, date, day string) int {
 // ResolveDay applies the rows of the most specific tier present for date (a
 // Jakarta date; only its calendar date is used). Within the tier a closed row
 // wins over open rows; rows with a null open or close are ignored. Ported
-// from bandung-coffeeshop-be service/hours.go — keep the two in sync.
+// from bandung-coffeeshop-be service/cafe.go — keep the two in sync.
 func ResolveDay(rows []CafeHour, date time.Time) DayHours {
 	d := DayHours{Date: date.Format(time.DateOnly), Day: DayOf(date), Ranges: []HourRange{}}
 	best := tierNone
