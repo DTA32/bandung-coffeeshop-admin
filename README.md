@@ -27,6 +27,7 @@ handlers/<entity>/  one package per entity (cafe, location, tag, ratingtype, rat
                  plus handler.go (shared helpers) and form.go (form parsing)
 controllers/     <entity>.controller.go: business rules, validation, normalisation (no SQL)
 repository/      <entity>.repository.go: all SQL (pgx) and every transaction
+storage/         Cloudflare R2 client for image uploads
 models/          <entity>.model.go: DTOs shared by all layers
 middleware/      SameOrigin, Logging, Recover, SecurityHeaders
 templates/       templ components, one file per entity (cafes.templ, rating_types.templ, ...) plus layout/components
@@ -49,6 +50,9 @@ static/          embedded CSS, JS, vendored libs
   split ranges and a "Closed" toggle, and special dates (holidays, events). Scraped hours proposals show current
   vs proposed per date and, when approved, replace the regular hours and the special dates inside the scraped
   window. Needs BE migration 013 (014 drops the old `cafe.open_hour/close_hour` after rollout).
+- Images: the cafe and location forms upload JPEG / PNG / WebP files straight to Cloudflare R2 at
+  `cafe/<slug>/<file>` / `location/<slug>/<file>` and fill in the `https://image.bdgcafe.com/...` URL; typing a
+  URL by hand still works. Needs the `R2_*` settings (otherwise the upload buttons are hidden).
 - Cafe list: sort by least / most recently updated (`?sort=updated_asc|updated_desc`).
 - Lists load 50 rows at a time by infinite scroll (HTMX `revealed` sentinel; `?page=N` on the same URL, filters
   carried along; the `/changes` and `/posts` queues page by an `after=` cursor so approvals don't skip rows). Cafe and location search is server-side typeahead (`?q=`, case-insensitive match on name / id).
@@ -64,7 +68,8 @@ make run                 # templ generate + tailwind build + go run .
 ```
 
 Config: `APP_PORT`, `DB_HOST/PORT/USER/PASSWORD/NAME`, `DB_SSLMODE`, `IMAGE_BASE_URL`, `DISPLAY_TZ`
-(default `Asia/Jakarta`). The database must already be migrated by `bandung-coffeeshop-be`.
+(default `Asia/Jakarta`), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (image uploads;
+leave blank to disable). The database must already be migrated by `bandung-coffeeshop-be`.
 
 Other targets: `make generate` (templ), `make css` (Tailwind; downloads the CLI to `bin/` on first use),
 `make build`, `make test`, `make vet`, `make fmt`. Run `make generate` after editing `.templ` files and
