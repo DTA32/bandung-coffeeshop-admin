@@ -13,6 +13,8 @@ import (
 var (
 	TZ        = time.UTC
 	ImageBase = "https://image.bdgcafe.com"
+	// ImageUploads shows the R2 upload buttons in ImagesEditor.
+	ImageUploads = false
 )
 
 func deref(s *string) string {

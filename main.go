@@ -21,6 +21,7 @@ import (
 	"github.com/dta32/bandung-coffeeshop-admin/repository"
 	"github.com/dta32/bandung-coffeeshop-admin/routes"
 	"github.com/dta32/bandung-coffeeshop-admin/static"
+	"github.com/dta32/bandung-coffeeshop-admin/storage"
 	"github.com/dta32/bandung-coffeeshop-admin/templates"
 )
 
@@ -46,7 +47,15 @@ func main() {
 	}
 	defer pool.Close()
 
-	h := handlers.New(controllers.New(repository.New(pool)), cfg)
+	var images *storage.R2
+	if cfg.HasR2() {
+		images = storage.NewR2(cfg.R2AccountID, cfg.R2AccessKeyID, cfg.R2SecretAccessKey, cfg.R2Bucket)
+	} else {
+		slog.Warn("R2_* not set: image uploads disabled")
+	}
+	templates.ImageUploads = images != nil
+
+	h := handlers.New(controllers.New(repository.New(pool), images, cfg.ImageBaseURL), cfg)
 	srv := &http.Server{
 		Addr:              ":" + cfg.AppPort,
 		Handler:           routes.New(h, static.FS),
