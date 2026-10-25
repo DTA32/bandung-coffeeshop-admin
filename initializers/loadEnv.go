@@ -23,6 +23,12 @@ type Config struct {
 	DBSSLMode    string
 	ImageBaseURL string
 	DisplayTZ    *time.Location
+
+	// Cloudflare R2 (S3 API) for image uploads; all four set = uploads enabled.
+	R2AccountID       string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
+	R2Bucket          string
 }
 
 func LoadConfig() (*Config, error) {
@@ -41,7 +47,17 @@ func LoadConfig() (*Config, error) {
 		DBSSLMode:    getenv("DB_SSLMODE", "disable"),
 		ImageBaseURL: strings.TrimRight(getenv("IMAGE_BASE_URL", "https://image.bdgcafe.com"), "/"),
 		DisplayTZ:    tz,
+
+		R2AccountID:       os.Getenv("R2_ACCOUNT_ID"),
+		R2AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
+		R2SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
+		R2Bucket:          os.Getenv("R2_BUCKET"),
 	}, nil
+}
+
+// HasR2 reports whether image uploads are configured.
+func (c *Config) HasR2() bool {
+	return c.R2AccountID != "" && c.R2AccessKeyID != "" && c.R2SecretAccessKey != "" && c.R2Bucket != ""
 }
 
 // DSN builds a postgres URL. The session timezone is pinned to UTC so that
