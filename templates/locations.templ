@@ -87,9 +87,9 @@ templ LocationFormPage(l *models.Location, isNew bool, errMsg, ok string) {
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 						@Field("ID / slug") {
 							if isNew {
-								<input class={ inputCls } name="id" value={ l.ID } placeholder="dago"/>
+								<input class={ inputCls } name="id" value={ l.ID } placeholder="dago" data-image-slug/>
 							} else {
-								<input class={ inputCls } value={ l.ID } placeholder="dago" disabled/>
+								<input class={ inputCls } value={ l.ID } placeholder="dago" disabled data-image-slug/>
 							}
 						}
 						@Field("Type") {
@@ -152,7 +152,7 @@ templ LocationFormPage(l *models.Location, isNew bool, errMsg, ok string) {
 						>{ deref(l.Geojson) }</textarea>
 					}
 				</section>
-				@ImagesEditor(l.Images)
+				@ImagesEditor(l.Images, "location")
 				// Actions
 				<div class="flex items-center justify-between">
 					<div>

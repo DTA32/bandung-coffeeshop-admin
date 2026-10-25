@@ -899,7 +899,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\" placeholder=\"accio-coffee\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\" placeholder=\"accio-coffee\" data-image-slug>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -935,7 +935,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "\" placeholder=\"accio-coffee\" disabled>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "\" placeholder=\"accio-coffee\" disabled data-image-slug>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1897,7 +1897,7 @@ func cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, o
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ImagesEditor(c.Images).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ImagesEditor(c.Images, "cafe").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -279,12 +279,99 @@
   function initImagesEditor(root) {
     var list = root.querySelector('[data-image-list]')
     var tpl = root.querySelector('[data-image-template]')
+    var errorBox = root.querySelector('[data-image-error]')
+    var form = root.closest('form')
 
-    root.querySelector('[data-image-add]').addEventListener('click', function () {
+    function newRow() {
       var row = tpl.content.firstElementChild.cloneNode(true)
       list.appendChild(row)
-      var input = row.querySelector('input[name="image_url"]')
+      return row
+    }
+
+    // The preview follows the URL input (typed or uploaded).
+    function syncPreview(row) {
+      var img = row.querySelector('[data-image-preview]')
+      var url = row.querySelector('input[name="image_url"]').value.trim()
+      if (!img) return
+      img.hidden = !/^https?:\/\//.test(url)
+      if (img.hidden) return
+      // Same small variant as the server-rendered thumb(u, 160).
+      var base = root.dataset.imageBase + '/'
+      img.src = url.indexOf(base) === 0 ? url + (url.indexOf('?') < 0 ? '?' : '&') + 'w=160' : url
+    }
+
+    function setStatus(row, text) {
+      var st = row.querySelector('[data-image-status]')
+      st.textContent = text
+      st.hidden = !text
+    }
+
+    function showError(text) {
+      errorBox.textContent = text
+      errorBox.hidden = !text
+    }
+
+    function slug() {
+      var input = form && form.querySelector('[data-image-slug]')
+      return input ? input.value.trim() : ''
+    }
+
+    // Uploads one file into row; the URL input gets the CDN URL on success.
+    function upload(file, row) {
+      var data = new FormData()
+      data.append('folder', root.dataset.imageFolder)
+      data.append('slug', slug())
+      data.append('file', file)
+      row.dataset.uploading = '1'
+      setStatus(row, 'Uploading ' + file.name + '…')
+      return fetch('/images', { method: 'POST', body: data, credentials: 'same-origin' })
+        .then(function (res) {
+          return res.json().then(
+            function (body) { return { ok: res.ok, body: body } },
+            function () { return { ok: false, body: { error: 'upload failed (' + res.status + ')' } } }
+          )
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error(r.body.error || 'upload failed')
+          row.querySelector('input[name="image_url"]').value = r.body.url
+          syncPreview(row)
+          setStatus(row, '')
+        })
+        .catch(function (err) {
+          setStatus(row, file.name + ': ' + err.message)
+        })
+        .finally(function () {
+          delete row.dataset.uploading
+        })
+    }
+
+    root.querySelector('[data-image-add]').addEventListener('click', function () {
+      var input = newRow().querySelector('input[name="image_url"]')
       if (input) input.focus()
+    })
+
+    // File inputs sit inside labels (templates.ImagesEditor): "Upload images"
+    // ([data-image-file], several files, a new row each) and each row's own
+    // ([data-image-row-file], replaces that row's URL). Delegated, so rows
+    // added later work too.
+    root.addEventListener('change', function (e) {
+      var input = e.target
+      var rowInput = input.hasAttribute('data-image-row-file')
+      if (!rowInput && !input.hasAttribute('data-image-file')) return
+      var files = Array.prototype.slice.call(input.files)
+      input.value = ''
+      showError('')
+      if (!files.length) return
+      if (!slug()) {
+        showError('Set the ID / slug before uploading images.')
+        return
+      }
+      var target = rowInput ? input.closest('[data-image-row]') : null
+      // One at a time keeps the -2, -3 suffixes of same-named files in order.
+      files.reduce(function (p, file, i) {
+        var row = target && i === 0 ? target : newRow()
+        return p.then(function () { return upload(file, row) })
+      }, Promise.resolve())
     })
 
     list.addEventListener('click', function (e) {
@@ -297,6 +384,21 @@
       else if (btn.hasAttribute('data-image-down') && row.nextElementSibling)
         list.insertBefore(row.nextElementSibling, row)
     })
+
+    list.addEventListener('change', function (e) {
+      if (e.target.name === 'image_url') syncPreview(e.target.closest('[data-image-row]'))
+    })
+
+    // Don't save the form while an upload is still running.
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        if (list.querySelector('[data-uploading]')) {
+          e.preventDefault()
+          e.stopImmediatePropagation()
+          showError('Wait for the uploads to finish before saving.')
+        }
+      }, true)
+    }
   }
 
   // Ratings: the score/override inputs are disabled until the dimension is ticked.
