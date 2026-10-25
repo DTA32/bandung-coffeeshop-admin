@@ -34,7 +34,8 @@ docker build -t bandung-coffeeshop-admin .
 ```
 
 Copy `.env.example` → `.env`. Config: `APP_PORT`, `DB_HOST/PORT/USER/PASSWORD/NAME`, `DB_SSLMODE`,
-`IMAGE_BASE_URL` (renders R2 keys), `DISPLAY_TZ` (default `Asia/Jakarta`).
+`IMAGE_BASE_URL` (renders R2 keys and prefixes uploaded images), `DISPLAY_TZ` (default `Asia/Jakarta`),
+`R2_ACCOUNT_ID/ACCESS_KEY_ID/SECRET_ACCESS_KEY/BUCKET` (image uploads; any blank = uploads off, URLs are still typed by hand).
 
 After editing a `.templ` file run `make generate`; after adding Tailwind classes run `make css`.
 Pin versions: templ `v0.3.1020` (also in `go.mod`, Dockerfile, Woodpecker), Tailwind `v4.3.3`
@@ -48,15 +49,15 @@ business rules (validation, normalisation, proposal/feed rules) live only in `co
 requests and render templates.
 
 ```
-main.go          wiring: repository.New(pool) -> controllers.New(repos) -> handlers.New(ctl, cfg) -> routes.New
+main.go          wiring: repository.New(pool) -> controllers.New(repos, r2, imageBase) -> handlers.New(ctl, cfg) -> routes.New
                  (layout follows Sinanaas/gotth-auction)
 initializers/    LoadEnv/LoadConfig (env config; DSN pins the session timezone to UTC), ConnectDB (pgx pool)
 routes/          <entity>.route.go (cafe, location, tag, rating_type, rating_category, feed, change, post, source,
-                 user, review, dashboard) + basic.route.go (health, static) + routes.go (middleware chain)
+                 user, review, dashboard, image) + basic.route.go (health, static) + routes.go (middleware chain)
 handlers/        shared code only, package `handlers`: handler.go (Handler{Ctl, Cfg}), helpers.go (Render/ServerError/
                  NotFound/UserError/SavedOr/FriendlyUnique), forms.go (Opt*/Checked/ParseImages/FormErrorf), gethealth.go
 handlers/<entity>/  one package per entity (cafe, location, tag, ratingtype, ratingcategory, feed, change, post, source,
-                 user, review, dashboard); each route is one small struct embedding *handlers.Handler, one file per route named
+                 user, review, dashboard, image); each route is one small struct embedding *handlers.Handler, one file per route named
                  <get|post><entity><action>.go (cafe/getcafes.go, cafe/postcafeedit.go, change/postchangeapproveall.go,
                  source/getsourcesnapshot.go), plus handler.go (helpers used by several routes of the entity) and
                  form.go (+ form_test.go) for form parsing. Cross-entity helpers are exported (cafe.FromPath,
@@ -66,6 +67,7 @@ controllers/     <entity>.controller.go: XxxController with validation + busines
                  validators)
 repository/      <entity>.repository.go: XxxRepository, all raw pgx SQL; repository.go (Repositories bundle,
                  sentinel errors). Owns every transaction. Integration tests (gated on ADMIN_TEST_DSN) sit here
+storage/         r2.go: Cloudflare R2 client (S3 API, stdlib SigV4, conditional PUT only; the one non-SQL store)
 models/          <entity>.model.go DTOs shared by all layers
 middleware/      SameOrigin (CSRF guard), Logging, Recover, SecurityHeaders, CacheStatic
 templates/       templ components, one file per entity (cafes, locations, tags, rating_types, rating_categories,
@@ -241,7 +243,16 @@ close < open = overnight; 24h = `00:00–23:59`; dates are Jakarta (`models.Jaka
 - Timestamps are `timestamp without time zone` in UTC; the UI shows and accepts `DISPLAY_TZ`.
 - Opening hours: `cafe_hour` rows (BE migration 013; `cafe.open_hour/close_hour` are never read or written
   here and are dropped by 014). See "Opening hours" below.
-- `cafe_feed.images` and `location_image.url` hold full `https://image.bdgcafe.com/...` URLs;
+- Image uploads (cafe / location form, `templates.ImagesEditor`): "Upload images" (several files, one row each) or
+  a row's upload button (both are `<label>`s around an `sr-only` file input: some browsers ignore a scripted
+  `click()` on a hidden file input) posts multipart `folder` (`cafe` | `location`), `slug` (the form's `[data-image-slug]` ID
+  input; new records need it typed first) and `file` to `POST /images` (`handlers/image`), which answers
+  `{"url"}` / `{"error"}` (422). `ImageController.Upload` accepts sniffed JPEG / PNG / WebP up to 15 MB
+  (`MaxImageBytes`), stores at `<folder>/<slug>/<sanitised original file name>` with `If-None-Match: *` (a taken
+  name becomes `-2`, `-3`, ... never an overwrite) and returns `IMAGE_BASE_URL/<key>`. JS fills the row's URL
+  input (still editable for manual entry), shows a thumbnail and blocks saving while uploads run. Nothing is
+  deleted from R2 when a row is removed.
+- `cafe_feed.images` and `location_image.url` (cafe images too) hold full `https://image.bdgcafe.com/...` URLs;
   scraped Instagram media lives under R2 `ig/` (watermark bypassed).
 - `cafe.weather` is NOT NULL — always pass a non-nil slice.
 - Saving a cafe only bumps `cafe_tag.updated_at` when visibility changes (the public API picks the

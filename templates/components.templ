@@ -70,9 +70,12 @@ func coordLng(c *models.Coordinates) string {
 }
 
 // ImagesEditor is the console's image list: URL + EN/ID alt text per row,
-// reorder and remove buttons; row order = display_order.
-templ ImagesEditor(images []models.Image) {
-	<section class={ cardCls } data-images-editor>
+// reorder and remove buttons; row order = display_order. With R2 configured
+// (ImageUploads) images can also be uploaded to <folder>/<slug>/ (folder =
+// cafe | location, slug = the form's [data-image-slug] input); the upload
+// fills the row's URL, which stays editable for manual entry.
+templ ImagesEditor(images []models.Image, folder string) {
+	<section class={ cardCls } data-images-editor data-image-folder={ folder } data-image-base={ ImageBase }>
 		<h2 class={ sectionTitle }>Images</h2>
 		<div class="flex flex-col gap-3">
 			<div class="flex flex-col gap-3 empty:hidden" data-image-list>
@@ -80,10 +83,23 @@ templ ImagesEditor(images []models.Image) {
 					@imageRow(im)
 				}
 			</div>
-			<button type="button" class={ btnOutlineCls } data-image-add>
-				@Icon("plus", 14)
-				Add image
-			</button>
+			<p class={ rowErrorCls } data-image-error hidden></p>
+			<div class="flex flex-wrap items-center gap-2">
+				<button type="button" class={ btnOutlineCls } data-image-add>
+					@Icon("plus", 14)
+					Add image
+				</button>
+				if ImageUploads {
+					// A label opens the picker natively; some browsers ignore a
+					// scripted click() on a hidden file input.
+					<label class={ btnOutlineCls, "cursor-pointer focus-within:border-grove" }>
+						@Icon("upload", 14)
+						Upload images
+						<input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" data-image-file/>
+					</label>
+					<span class="text-xs text-bark">JPEG, PNG or WebP, up to 15 MB; stored at { folder }/&lt;ID&gt;/ on { ImageBase }</span>
+				}
+			</div>
 		</div>
 		<template data-image-template>
 			@imageRow(models.Image{})
@@ -93,14 +109,31 @@ templ ImagesEditor(images []models.Image) {
 
 templ imageRow(im models.Image) {
 	<div class="flex items-start gap-2" data-image-row>
+		<img
+			src={ thumb(im.URL, 160) }
+			alt=""
+			class="h-16 w-16 shrink-0 rounded-lg bg-cream object-cover"
+			loading="lazy"
+			data-image-preview
+			if im.URL == "" {
+				hidden
+			}
+		/>
 		<div class="flex flex-1 flex-col gap-2">
 			<input class={ inputCls } name="image_url" placeholder="Image URL" value={ im.URL } aria-label="Image URL"/>
 			<div class="flex gap-2">
 				<input class={ inputCls, "min-w-0 flex-1" } name="image_desc" placeholder="Alt text (EN)" value={ im.Description } aria-label="Alt text (EN)"/>
 				<input class={ inputCls, "min-w-0 flex-1" } name="image_desc_indo" placeholder="Alt text (ID)" value={ im.DescriptionIndo } aria-label="Alt text (ID)"/>
 			</div>
+			<p class="m-0 text-xs text-bark" data-image-status hidden></p>
 		</div>
 		<div class="flex flex-col gap-1">
+			if ImageUploads {
+				<label class={ btnIconCls, "cursor-pointer focus-within:border-grove" } title="Upload a file for this row">
+					@Icon("upload", 14)
+					<input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" aria-label="Upload a file for this row" data-image-row-file/>
+				</label>
+			}
 			<button type="button" class={ btnIconCls } data-image-up aria-label="Move up">
 				@Icon("arrow-up", 14)
 			</button>

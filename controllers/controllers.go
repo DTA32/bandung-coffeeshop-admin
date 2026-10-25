@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/dta32/bandung-coffeeshop-admin/repository"
+	"github.com/dta32/bandung-coffeeshop-admin/storage"
 )
 
 // Controllers bundles one controller per entity.
@@ -26,9 +27,12 @@ type Controllers struct {
 	User           *UserController
 	Review         *ReviewController
 	Dashboard      *DashboardController
+	Image          *ImageController
 }
 
-func New(repos *repository.Repositories) *Controllers {
+// New wires the controllers. images is nil when R2 is not configured;
+// imageBase is the public host uploaded images are served from.
+func New(repos *repository.Repositories, images *storage.R2, imageBase string) *Controllers {
 	return &Controllers{
 		repos:          repos,
 		Cafe:           NewCafeController(repos.Cafe),
@@ -43,6 +47,7 @@ func New(repos *repository.Repositories) *Controllers {
 		User:           NewUserController(repos.User),
 		Review:         NewReviewController(repos.Review, repos.RatingType),
 		Dashboard:      NewDashboardController(repos.Dashboard, repos.Source),
+		Image:          NewImageController(images, imageBase),
 	}
 }
 

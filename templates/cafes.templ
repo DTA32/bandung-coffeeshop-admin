@@ -117,9 +117,9 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				@Field("ID / slug") {
 					if isNew {
-						<input class={ inputCls } name="id" value={ c.ID } placeholder="accio-coffee"/>
+						<input class={ inputCls } name="id" value={ c.ID } placeholder="accio-coffee" data-image-slug/>
 					} else {
-						<input class={ inputCls } value={ c.ID } placeholder="accio-coffee" disabled/>
+						<input class={ inputCls } value={ c.ID } placeholder="accio-coffee" disabled data-image-slug/>
 					}
 				}
 				@Field("Name") {
@@ -205,7 +205,7 @@ templ cafeForm(c *models.Cafe, opts models.CafeFormOptions, isNew bool, errMsg, 
 		</section>
 		@cafePriceSection(c.Price)
 		@cafeTagsSection(c.ID, c.Tags, opts.Tags)
-		@ImagesEditor(c.Images)
+		@ImagesEditor(c.Images, "cafe")
 		// Actions
 		<div class="flex items-center justify-between">
 			<div>
