@@ -117,7 +117,8 @@ covered by the gated `repository` integration tests.
 - `/changes` — pending field proposals grouped by cafe: approve / edit & approve / reject, or select several
   rows and batch approve / reject;
   informational fields (`temp_closed`, `menu_content`, `ig_bio`) are dismiss-only; "approve all"
-- `/posts` — pending `ig_post` proposals: "Create feed for this cafe" (prefilled form) or "Ignore"
+- `/posts` — pending `ig_post` proposals: "Create feed for this cafe" (prefilled form) or "Ignore", or select
+  several cards and batch publish (feed created with the form's defaults, `controllers.DefaultFeedInput`) / ignore
 - `/sources` — `source_target` per cafe × source (enable, external id override/clear, reset failures),
   recent `scrape_run`s, `/snapshots/{id}` raw/parsed view
 - `/users` — public-site accounts (BCF-27): typeahead search on name / email (ILIKE via `EscapeLike`), status
@@ -160,6 +161,11 @@ max `controllers.MaxBatch` = 200): `ChangeController.ApplyBatch` runs each id th
 Get/Approve/Reject path, skips informational fields on approve, never aborts on one failure, and the HTMX
 response removes processed rows and fills `#batch-flash` via out-of-band swaps. Checkbox / action-bar logic is
 delegated JS in `static/js/forms.js`.
+`/posts` has the same multi-select (`POST /posts/batch`, `action=publish|ignore`, `PostController.ApplyBatch`):
+publish creates each post's feed entry exactly as the "Create feed" form is prefilled (caption, every image,
+author Admin, permalink, published at `taken_at`, visible); a post without a caption fails with a reason
+instead. `templates.BatchBar` / `BatchResult` are shared (row id prefix `proposal` / `post`); the bar's
+confirm texts come from each button's `data-batch-confirm` (`{n}` = selected count).
 
 ### UI
 
