@@ -28,7 +28,12 @@ templ ChangesPage(groups []models.CafeProposals, cafeFilter int, next, ok, errMs
 			}
 			<form id="batch-form" method="post" action="/changes/batch" hx-post="/changes/batch" hx-swap="none" hx-disabled-elt="#batch-bar button"></form>
 			@ChangeGroups(groups, next)
-			@batchBar()
+			@BatchBar(
+				BatchButton{Action: "approve", Label: "Approve selected", Icon: "check", Primary: true,
+					Confirm: "Approve {n} selected change(s) as proposed? Informational ones are skipped."},
+				BatchButton{Action: "reject", Label: "Reject selected", Icon: "x",
+					Confirm: "Reject {n} selected change(s)? The scraper will not re-propose them."},
+			)
 		}
 	}
 }
@@ -241,30 +246,49 @@ templ ProposalResolved(p models.Proposal, status, detail string) {
 	</div>
 }
 
-// batchBar is the sticky action bar shown while 1+ rows are selected
+// BatchButton is one action of BatchBar; Confirm's {n} is replaced with the
+// selected count by static/js/forms.js.
+type BatchButton struct {
+	Action, Label, Icon, Confirm string
+	Primary                      bool
+}
+
+// BatchBar is the sticky action bar shown while 1+ rows are selected
 // (static/js/forms.js toggles it and fills the count / confirm texts). Its
-// buttons submit the empty #batch-form via the form attribute.
-templ batchBar() {
+// buttons submit the empty #batch-form via the form attribute. Shared by
+// /changes and /posts.
+templ BatchBar(buttons ...BatchButton) {
 	<div id="batch-bar" class="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-grove-light bg-white p-3 shadow-md" hidden>
 		<span class="text-sm font-semibold text-forest" data-batch-count>0 selected</span>
 		<div class="ml-auto flex flex-wrap gap-2">
-			<button type="submit" form="batch-form" name="action" value="approve" class={ btnPrimarySmCls } data-confirm="Approve selected changes?" data-batch-approve>
-				@Icon("check", 14)
-				Approve selected
-			</button>
-			<button type="submit" form="batch-form" name="action" value="reject" class={ btnDeleteSmCls } data-confirm="Reject selected changes?" data-batch-reject>
-				@Icon("x", 14)
-				Reject selected
-			</button>
+			for _, b := range buttons {
+				<button
+					type="submit"
+					form="batch-form"
+					name="action"
+					value={ b.Action }
+					if b.Primary {
+						class={ btnPrimarySmCls }
+					} else {
+						class={ btnDeleteSmCls }
+					}
+					data-confirm={ b.Confirm }
+					data-batch-confirm={ b.Confirm }
+				>
+					@Icon(b.Icon, 14)
+					{ b.Label }
+				</button>
+			}
 			<button type="button" class={ btnOutlineSmCls } data-batch-clear>Clear</button>
 		</div>
 	</div>
 }
 
-// BatchResult is the HTMX response of POST /changes/batch, all out-of-band:
-// the summary flash, deletion of processed rows and the reason under each
-// failed row (which stays in the list, still selected).
-templ BatchResult(res models.BatchResult, msg string, isErr bool) {
+// BatchResult is the HTMX response of POST /changes/batch and /posts/batch,
+// all out-of-band: the summary flash, deletion of processed rows (element id
+// prefix-<id>) and the reason under each failed row (prefix-err-<id>, which
+// stays in the list, still selected).
+templ BatchResult(res models.BatchResult, prefix, msg string, isErr bool) {
 	<div id="batch-flash" role="status" hx-swap-oob="true">
 		if isErr {
 			<div class={ errorBoxCls }>{ msg }</div>
@@ -273,9 +297,9 @@ templ BatchResult(res models.BatchResult, msg string, isErr bool) {
 		}
 	</div>
 	for _, id := range res.Done {
-		<div id={ "proposal-" + i64(id) } hx-swap-oob="delete"></div>
+		<div id={ prefix + "-" + i64(id) } hx-swap-oob="delete"></div>
 	}
 	for _, f := range res.Failed {
-		<p id={ "proposal-err-" + i64(f.ID) } class={ rowErrorCls } role="alert" hx-swap-oob="true">{ f.Reason }</p>
+		<p id={ prefix + "-err-" + i64(f.ID) } class={ rowErrorCls } role="alert" hx-swap-oob="true">{ f.Reason }</p>
 	}
 }

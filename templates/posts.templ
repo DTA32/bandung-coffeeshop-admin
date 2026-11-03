@@ -2,7 +2,7 @@ package templates
 
 import "github.com/dta32/bandung-coffeeshop-admin/models"
 
-templ PostsPage(posts []models.Post, cafeFilter int, next, ok string) {
+templ PostsPage(posts []models.Post, cafeFilter int, next, ok, errMsg string) {
 	@Layout("Instagram posts", NavPosts) {
 		@Page(pageWideCls) {
 			@BackLink("/", "Admin home")
@@ -12,14 +12,30 @@ templ PostsPage(posts []models.Post, cafeFilter int, next, ok string) {
 					<a href="/posts" class={ btnCancelCls }>Show all cafes</a>
 				}
 			</div>
-			<p class={ introCls }>New posts from cafe accounts (including collabs). Turn one into a feed entry, or ignore it — ignored posts never come back.</p>
-			@Notice(ok, "")
+			<p class={ introCls }>
+				New posts from cafe accounts (including collabs). Turn one into a feed entry, or ignore it — ignored posts
+				never come back. Select several to publish them as-is (caption, all images, posted time) or ignore them at once.
+			</p>
+			@Notice(ok, errMsg)
+			<div id="batch-flash" role="status"></div>
 			if len(posts) == 0 {
 				<p class="m-0 text-sm text-bark">No new posts.</p>
+			} else {
+				<label class={ checkRowCls, "text-sm text-bark" }>
+					<input type="checkbox" id="batch-all" aria-label="Select all loaded posts"/>
+					Select all loaded
+				</label>
 			}
+			<form id="batch-form" method="post" action="/posts/batch" hx-post="/posts/batch" hx-swap="none" hx-disabled-elt="#batch-bar button"></form>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				@PostCards(posts, next)
 			</div>
+			@BatchBar(
+				BatchButton{Action: "publish", Label: "Publish selected", Icon: "check", Primary: true,
+					Confirm: "Publish {n} selected post(s) as feed entries with their caption, images and posted time?"},
+				BatchButton{Action: "ignore", Label: "Ignore selected", Icon: "x",
+					Confirm: "Ignore {n} selected post(s)? Ignored posts never come back."},
+			)
 		}
 	}
 }
@@ -35,14 +51,17 @@ templ PostCards(posts []models.Post, next string) {
 templ PostCard(p models.Post) {
 	<article id={ "post-" + i64(p.ID) } class={ cardTightCls }>
 		<header class="flex items-start justify-between gap-2">
-			<div class="flex flex-col">
-				<a class="text-sm font-semibold text-forest hover:underline" href={ templ.URL("/posts?cafe=" + itoa(p.CafeID)) }>{ p.CafeName }</a>
-				<span class="text-xs text-bark">
-					{ fmtTime(p.Value.TakenAt) }
-					if p.Value.IsCollab {
-						· collab by { "@" + p.Value.Owner }
-					}
-				</span>
+			<div class="flex items-start gap-2">
+				<input type="checkbox" name="id" value={ i64(p.ID) } form="batch-form" data-batch-row class="mt-1" aria-label={ "Select post from " + p.CafeName }/>
+				<div class="flex flex-col">
+					<a class="text-sm font-semibold text-forest hover:underline" href={ templ.URL("/posts?cafe=" + itoa(p.CafeID)) }>{ p.CafeName }</a>
+					<span class="text-xs text-bark">
+						{ fmtTime(p.Value.TakenAt) }
+						if p.Value.IsCollab {
+							· collab by { "@" + p.Value.Owner }
+						}
+					</span>
+				</div>
 			</div>
 			if p.Value.Permalink != "" {
 				<a class={ "flex items-center gap-1 text-xs", inlineLinkCls } href={ templ.URL(p.Value.Permalink) } target="_blank" rel="noopener noreferrer">
@@ -53,6 +72,7 @@ templ PostCard(p models.Post) {
 		</header>
 		@postMedia(p.Value.Media)
 		<p class="m-0 whitespace-pre-wrap break-words text-sm text-forest">{ truncate(p.Value.Caption, 400) }</p>
+		<p id={ "post-err-" + i64(p.ID) } class={ rowErrorCls } role="alert" hidden></p>
 		<div class="mt-auto flex gap-2">
 			<a class={ "flex-1", btnPrimarySmCls } href={ templ.URL("/posts/" + i64(p.ID) + "/feed") }>
 				@Icon("plus", 14)

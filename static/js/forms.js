@@ -1,6 +1,6 @@
 // Small progressive enhancements that replace the console's React state:
 // the Leaflet coordinate picker and geoman polygon editor, the orderable image list,
-// the per-day hours editor, rating / tag toggles, /changes batch selection, confirm prompts and the "Saving..." button label.
+// the per-day hours editor, rating / tag toggles, /changes + /posts batch selection, confirm prompts and the "Saving..." button label.
 ;(function () {
   'use strict'
 
@@ -456,7 +456,7 @@
     if (err) err.textContent = ''
   })
 
-  // Batch select on /changes: row checkboxes (also rows appended later by
+  // Batch select on /changes and /posts: row checkboxes (also rows appended later by
   // infinite scroll), "select all loaded", sticky action bar. Delegated, so
   // new rows start unchecked and everything re-syncs after any htmx swap.
   function syncBatch() {
@@ -478,10 +478,9 @@
     bar.hidden = n === 0
     var label = n + ' selected'
     bar.querySelector('[data-batch-count]').textContent = label
-    var a = bar.querySelector('[data-batch-approve]')
-    var r = bar.querySelector('[data-batch-reject]')
-    a.dataset.confirm = 'Approve ' + n + ' selected change(s) as proposed? Informational ones are skipped.'
-    r.dataset.confirm = 'Reject ' + n + ' selected change(s)? The scraper will not re-propose them.'
+    bar.querySelectorAll('[data-batch-confirm]').forEach(function (b) {
+      b.dataset.confirm = b.dataset.batchConfirm.replace('{n}', n)
+    })
   }
   document.addEventListener('change', function (e) {
     var t = e.target
