@@ -46,5 +46,5 @@ func (h *PostChangeBatchHandler) reply(w http.ResponseWriter, r *http.Request, r
 		http.Redirect(w, r, "/changes?"+key+"="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
-	h.Render(w, r, http.StatusOK, templates.BatchResult(res, msg, isErr))
+	h.Render(w, r, http.StatusOK, templates.BatchResult(res, "proposal", msg, isErr))
 }

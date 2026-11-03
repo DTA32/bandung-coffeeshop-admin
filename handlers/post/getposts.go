@@ -36,5 +36,5 @@ func (h *GetPostsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Render(w, r, http.StatusOK, templates.PostCards(pg.Items, next))
 		return
 	}
-	h.Render(w, r, http.StatusOK, templates.PostsPage(pg.Items, cafeID, next, r.URL.Query().Get("ok")))
+	h.Render(w, r, http.StatusOK, templates.PostsPage(pg.Items, cafeID, next, r.URL.Query().Get("ok"), r.URL.Query().Get("err")))
 }

@@ -11,10 +11,12 @@ import (
 	"github.com/dta32/bandung-coffeeshop-admin/models"
 )
 
-// Batch actions and limits for POST /changes/batch.
+// Batch actions and limits for POST /changes/batch and POST /posts/batch.
 const (
 	BatchApprove = "approve"
 	BatchReject  = "reject"
+	BatchPublish = "publish"
+	BatchIgnore  = "ignore"
 	MaxBatch     = 200
 )
 
@@ -25,12 +27,22 @@ func ParseBatch(action string, rawIDs []string) (string, []int64, error) {
 	if action != BatchApprove && action != BatchReject {
 		return "", nil, invalid("unknown batch action %q", action)
 	}
+	ids, err := parseBatchIDs(rawIDs, "change")
+	if err != nil {
+		return "", nil, err
+	}
+	return action, ids, nil
+}
+
+// parseBatchIDs is the shared id half of ParseBatch / ParsePostBatch; noun
+// names the item in the messages ("change", "post").
+func parseBatchIDs(rawIDs []string, noun string) ([]int64, error) {
 	seen := make(map[int64]bool, len(rawIDs))
 	ids := make([]int64, 0, len(rawIDs))
 	for _, s := range rawIDs {
 		id, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
 		if err != nil || id <= 0 {
-			return "", nil, invalid("invalid change id %q", s)
+			return nil, invalid("invalid %s id %q", noun, s)
 		}
 		if !seen[id] {
 			seen[id] = true
@@ -38,12 +50,12 @@ func ParseBatch(action string, rawIDs []string) (string, []int64, error) {
 		}
 	}
 	if len(ids) == 0 {
-		return "", nil, invalid("select at least one change")
+		return nil, invalid("select at least one %s", noun)
 	}
 	if len(ids) > MaxBatch {
-		return "", nil, invalid("select at most %d changes at a time (got %d)", MaxBatch, len(ids))
+		return nil, invalid("select at most %d %ss at a time (got %d)", MaxBatch, noun, len(ids))
 	}
-	return action, ids, nil
+	return ids, nil
 }
 
 // batchSteps are the single-row operations a batch runs; the real ones are
@@ -106,17 +118,16 @@ func batchReason(id int64, err error) string {
 	case IsValidation(err):
 		return err.Error()
 	}
-	slog.Error("batch change failed", "id", id, "err", err)
+	slog.Error("batch item failed", "id", id, "err", err)
 	return "unexpected error"
 }
 
 // BatchSummary renders the flash text, e.g.
 // "Approved 12, skipped 2 informational, failed 1 (menu must be an http(s) URL)".
 func BatchSummary(res models.BatchResult) string {
-	verb := "Approved"
-	if res.Action == BatchReject {
-		verb = "Rejected"
-	}
+	verb := map[string]string{
+		BatchApprove: "Approved", BatchReject: "Rejected", BatchPublish: "Published", BatchIgnore: "Ignored",
+	}[res.Action]
 	parts := []string{fmt.Sprintf("%s %d", verb, len(res.Done))}
 	if n := len(res.Skipped); n > 0 {
 		parts = append(parts, fmt.Sprintf("skipped %d informational (dismiss them instead)", n))

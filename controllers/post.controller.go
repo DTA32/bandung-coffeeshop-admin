@@ -65,6 +65,32 @@ func (c *PostController) Ignore(ctx context.Context, id int64) error {
 	return c.repo.Ignore(ctx, id)
 }
 
+// FeedDefaults is the config DefaultFeedInput needs.
+type FeedDefaults struct {
+	ImageBase string
+	TZ        *time.Location
+	Now       time.Time
+}
+
+// DefaultFeedInput is the feed a post turns into unless the admin edits it:
+// the caption, author "Admin", the permalink, every image, visible, published
+// when the post went up on Instagram (now if the scraper didn't record it).
+// It prefills the "Create feed" form and is what a batch publish creates.
+func DefaultFeedInput(post models.Post, d FeedDefaults) FeedInput {
+	published := post.Value.TakenAt
+	if published.IsZero() {
+		published = d.Now
+	}
+	return FeedInput{
+		Content:     strings.TrimSpace(post.Value.Caption),
+		Images:      PostImageURLs(post, d.ImageBase),
+		Author:      "Admin",
+		Link:        post.Value.Permalink,
+		PublishedAt: published.In(d.TZ).Format(datetimeLocal),
+		Visible:     true,
+	}
+}
+
 // PostImageURLs maps the post's R2 keys to public image URLs.
 func PostImageURLs(post models.Post, imageBase string) []string {
 	out := make([]string, 0, len(post.Value.Media))
