@@ -6,8 +6,36 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/dta32/bandung-coffeeshop-admin/models"
 )
+
+// backdate moves the cafe's and its location's updated_at a day back, so a
+// bump is observable.
+func backdate(t *testing.T, pool *pgxpool.Pool, cafeID int) {
+	t.Helper()
+	for _, q := range []string{
+		`UPDATE cafe SET updated_at = now() - interval '1 day' WHERE id = $1`,
+		`UPDATE location SET updated_at = now() - interval '1 day' WHERE id = (SELECT location_id FROM cafe WHERE id = $1)`,
+	} {
+		if _, err := pool.Exec(context.Background(), q, cafeID); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// freshness reports whether cafe.updated_at / location.updated_at were bumped
+// in the last minute.
+func freshness(t *testing.T, pool *pgxpool.Pool, cafeID int) (cafe, location bool) {
+	t.Helper()
+	if err := pool.QueryRow(context.Background(), `
+		SELECT c.updated_at > now() - interval '1 minute', l.updated_at > now() - interval '1 minute'
+		FROM cafe c JOIN location l ON l.id = c.location_id WHERE c.id = $1`, cafeID).Scan(&cafe, &location); err != nil {
+		t.Fatal(err)
+	}
+	return cafe, location
+}
 
 func TestApplyFieldProposal(t *testing.T) {
 	repo, pool, cafeID := testRepo(t)
@@ -22,8 +50,8 @@ func TestApplyFieldProposal(t *testing.T) {
 			($1, '2026-10-31', '2026-11-02', true)`, cafeID); err != nil {
 		t.Fatal(err)
 	}
-	// Backdate updated_at so the bump is observable.
-	_, _ = pool.Exec(ctx, `UPDATE cafe SET updated_at = now() - interval '1 day' WHERE id = $1`, cafeID)
+	// Backdate updated_at so a bump would be observable.
+	backdate(t, pool, cafeID)
 	hours := models.HoursProposal{WindowFrom: "2026-10-24", WindowUntil: "2026-10-30", Rows: []models.CafeHour{
 		{Day: strp("mon"), Closed: true},
 		{Open: strp("09:00"), Close: strp("21:00")},
@@ -57,12 +85,8 @@ func TestApplyFieldProposal(t *testing.T) {
 	if strings.Join(got, "|") != want {
 		t.Fatalf("rows after apply: %q, want %q", strings.Join(got, "|"), want)
 	}
-	var fresh bool
-	if err := pool.QueryRow(ctx, `SELECT updated_at > now() - interval '1 minute' FROM cafe WHERE id = $1`, cafeID).Scan(&fresh); err != nil {
-		t.Fatal(err)
-	}
-	if !fresh {
-		t.Fatal("cafe.updated_at not bumped")
+	if cafeFresh, _ := freshness(t, pool, cafeID); cafeFresh {
+		t.Fatal("hours approval bumped cafe.updated_at")
 	}
 
 	// Second approval of the same proposal must fail and change nothing.
@@ -71,10 +95,38 @@ func TestApplyFieldProposal(t *testing.T) {
 		t.Fatalf("want ErrProposalNotPending, got %v", err)
 	}
 
-	// Address writes location.description and bumps both updated_at columns.
+	// Address writes location.description and bumps location.updated_at only.
 	addr := insertProposal(t, pool, cafeID, models.FieldAddress, "", `"Jl. Test 1"`)
 	if err := repo.Change.Apply(ctx, addr, models.FieldUpdate{Text: strp("Jl. Test 1")}, "Jl. Test 1"); err != nil {
 		t.Fatal(err)
+	}
+	if cafeFresh, locFresh := freshness(t, pool, cafeID); cafeFresh || !locFresh {
+		t.Fatalf("address approval: cafe bumped %v (want false), location bumped %v (want true)", cafeFresh, locFresh)
+	}
+
+	// Status with the value it already has writes nothing.
+	backdate(t, pool, cafeID)
+	st := insertProposal(t, pool, cafeID, models.FieldStatus, "", `"active"`)
+	if err := repo.Change.Apply(ctx, st, models.FieldUpdate{Text: strp("active")}, "active"); err != nil {
+		t.Fatal(err)
+	}
+	if cafeFresh, locFresh := freshness(t, pool, cafeID); cafeFresh || locFresh {
+		t.Fatalf("same-status approval bumped: cafe %v, location %v", cafeFresh, locFresh)
+	}
+
+	// Phone bumps cafe.updated_at only when the value differs.
+	for i, tc := range []struct {
+		phone string
+		bump  bool
+	}{{"+62811", true}, {"+62811", false}} {
+		backdate(t, pool, cafeID)
+		ph := insertProposal(t, pool, cafeID, models.FieldPhone, "", `"`+tc.phone+`"`)
+		if err := repo.Change.Apply(ctx, ph, models.FieldUpdate{Text: strp(tc.phone)}, tc.phone); err != nil {
+			t.Fatal(err)
+		}
+		if cafeFresh, locFresh := freshness(t, pool, cafeID); cafeFresh != tc.bump || locFresh {
+			t.Fatalf("phone #%d: cafe bumped %v (want %v), location bumped %v", i, cafeFresh, tc.bump, locFresh)
+		}
 	}
 	var desc string
 	if err := pool.QueryRow(ctx, `

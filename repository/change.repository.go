@@ -179,10 +179,12 @@ func resolve(ctx context.Context, tx pgx.Tx, id int64, status string, resolved a
 	return err
 }
 
-// Apply writes the value to the live tables, marks the proposal approved and
-// bumps cafe.updated_at (and location.updated_at when a location column
-// changed), all in one transaction. Hours replace the undated cafe_hour rows
-// and the dated rows overlapping the proposal's window (replaceWindowHours).
+// Apply writes the value to the live tables and marks the proposal approved,
+// in one transaction. Only the table holding the field is written, and only
+// when the value differs, so updated_at moves on that table alone: phone /
+// menu -> cafe, address / status -> location. Hours replace the undated
+// cafe_hour rows and the dated rows overlapping the proposal's window
+// (replaceWindowHours); cafe.updated_at is not touched.
 func (r *ChangeRepository) Apply(ctx context.Context, id int64, u models.FieldUpdate, resolved any) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -200,26 +202,26 @@ func (r *ChangeRepository) Apply(ctx context.Context, id int64, u models.FieldUp
 		if u.Hours == nil {
 			return errors.New("hours update without rows")
 		}
-		// Bumping updated_at first also locks the cafe row against a
-		// concurrent cafe form save.
-		if _, err = tx.Exec(ctx, `UPDATE cafe SET updated_at = NOW() WHERE id = $1`, cafeID); err == nil {
+		// Lock the cafe row against a concurrent cafe form save
+		// (CafeRepository.Update locks it too).
+		if _, err = tx.Exec(ctx, `SELECT 1 FROM cafe WHERE id = $1 FOR UPDATE`, cafeID); err == nil {
 			err = replaceWindowHours(ctx, tx, cafeID, u.Hours.WindowFrom, u.Hours.WindowUntil, u.Hours.Rows)
 		}
 	case models.FieldPhone:
-		_, err = tx.Exec(ctx, `UPDATE cafe SET phone = $2, updated_at = NOW() WHERE id = $1`, cafeID, u.Text)
+		_, err = tx.Exec(ctx, `
+			UPDATE cafe SET phone = $2, updated_at = NOW() WHERE id = $1 AND phone IS DISTINCT FROM $2`, cafeID, u.Text)
 	case models.FieldMenu:
-		_, err = tx.Exec(ctx, `UPDATE cafe SET menu = $2, updated_at = NOW() WHERE id = $1`, cafeID, u.Text)
+		_, err = tx.Exec(ctx, `
+			UPDATE cafe SET menu = $2, updated_at = NOW() WHERE id = $1 AND menu IS DISTINCT FROM $2`, cafeID, u.Text)
 	case models.FieldAddress, models.FieldStatus:
-		column := "description = $2"
+		column, value := "description", "$2::text"
 		if field == models.FieldStatus {
-			column = "status = $2::location_status_enum"
+			column, value = "status", "$2::location_status_enum"
 		}
-		if _, err = tx.Exec(ctx, `
-			UPDATE location SET `+column+`, updated_at = NOW()
+		_, err = tx.Exec(ctx, `
+			UPDATE location SET `+column+` = `+value+`, updated_at = NOW()
 			WHERE id = (SELECT location_id FROM cafe WHERE id = $1)
-		`, cafeID, u.Text); err == nil {
-			_, err = tx.Exec(ctx, `UPDATE cafe SET updated_at = NOW() WHERE id = $1`, cafeID)
-		}
+			  AND `+column+` IS DISTINCT FROM `+value, cafeID, u.Text)
 	default:
 		return fmt.Errorf("field %q cannot be applied", field)
 	}
