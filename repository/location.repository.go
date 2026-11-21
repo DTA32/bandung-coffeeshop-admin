@@ -151,7 +151,9 @@ func listImages(ctx context.Context, db *pgxpool.Pool, locationID string) ([]mod
 }
 
 // writeLocationImages upserts images keyed by (location_id, url) and deletes
-// any image absent from the payload; display_order follows slice order.
+// any image absent from the payload; display_order follows slice order. An
+// existing image is only rewritten (and its updated_at bumped) when its
+// descriptions or position changed.
 func writeLocationImages(ctx context.Context, tx pgx.Tx, locationID string, images []models.Image) error {
 	urls := make([]string, 0, len(images))
 	for i, im := range images {
@@ -164,6 +166,8 @@ func writeLocationImages(ctx context.Context, tx pgx.Tx, locationID string, imag
 				description_indo = EXCLUDED.description_indo,
 				display_order = EXCLUDED.display_order,
 				updated_at = NOW()
+			WHERE (location_image.description, location_image.description_indo, location_image.display_order)
+			      IS DISTINCT FROM (EXCLUDED.description, EXCLUDED.description_indo, EXCLUDED.display_order)
 		`, locationID, im.URL, im.Description, im.DescriptionIndo, i); err != nil {
 			return err
 		}

@@ -27,7 +27,7 @@ make test         # go test ./... -race -cover
 go vet ./...
 make fmt          # templ fmt + go fmt
 
-# Repository integration tests run only against a migrated database (001–013):
+# Repository integration tests run only against a migrated database (001–015):
 ADMIN_TEST_DSN='postgres://postgres:postgres@localhost:5432/bandung_coffeeshop?sslmode=disable' go test ./repository
 
 docker build -t bandung-coffeeshop-admin .
@@ -87,7 +87,7 @@ are package functions in `repository/change.repository.go`.
 Transactions (all in `repository/`): `CafeRepository.Create/Update` (location + cafe + price/hours/tags/images),
 `ReviewRepository.SetStatus/SetPinned` (row locked `FOR UPDATE`), `ReviewRepository.ReplaceRatings`,
 `ReviewRepository.CreatePartnership/UpdatePartnership` (review + ratings), `LocationRepository.Create/Update` (location + images), `TagRepository.Delete` (cafe_tag + tag),
-`ChangeRepository.Apply` (live column or windowed `cafe_hour` replace + proposal resolve + `cafe.updated_at`/`location.updated_at` bump),
+`ChangeRepository.Apply` (live column or windowed `cafe_hour` replace + proposal resolve; hours lock the cafe row `FOR UPDATE`),
 `ChangeRepository.Reject` / `PostRepository.Ignore`, `PostRepository.CreateFeed` (cafe_feed insert + proposal
 approve). Controllers never open a transaction.
 
@@ -104,7 +104,8 @@ covered by the gated `repository` integration tests.
   menu / status, per-day opening hours + a 7-day preview, Leaflet coordinates, "About this cafe" EN / ID = `cafe.description(_indo)` (empty → NULL; the
   address stays in `location.description(_indo)`), pricing, tags, ordered images); soft delete. Reviews and
   ratings are not on the cafe form any more (see `/reviews`). The list
-  sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`) and
+  sorts by last update (`?sort=updated_asc` default / `updated_desc`, whitelisted in `CafeRepository.List`; the
+  date is `cafe_last_modified.last_modified`, BE migration 015, the same value the public site shows) and
   searches server-side (`?q=`, typeahead).
   Each saved + visible tag row has a "Touch" button (`POST /cafes/{id}/tags/{tagId}/touch`, HTMX, swaps the row's
   touch fragment) that sets only `cafe_tag.updated_at = now()` (not `cafe.updated_at`) so that tag becomes the
@@ -181,7 +182,8 @@ tag toggles, `data-confirm`, "Saving..." labels). Saving a cafe/location returns
 ### Proposal rules (keep in sync with the scraper)
 
 Approving a field writes the live column, marks the proposal `approved` with `resolved_value`, and
-sets `cafe.updated_at = now()` (plus `location.updated_at` for `address` / `status`) — one transaction
+bumps `updated_at` only on the table that holds the field and only when the value differs (`phone` / `menu` →
+`cafe`, `address` / `status` → `location`; `hours` bump the `cafe_hour` rows they write, never `cafe`) — one transaction
 (`ChangeRepository.Apply` in `repository/change.repository.go`; the field -> column validation is `controllers.FieldUpdateFor`). Field → column: `hours` → `cafe_hour` rows (see "Opening hours" below), `phone` →
 `cafe.phone`, `menu` → `cafe.menu` (approval requires an http(s) URL; only the cafe form also accepts `#image-N` gallery hashes), `address` → `location.description` (the address lives there;
 `description_indo` is never touched), `status` → `location.status`. Reject/dismiss/ignore =
@@ -206,15 +208,16 @@ close < open = overnight; 24h = `00:00–23:59`; dates are Jakarta (`models.Jaka
   keys) and `special_key` / `special_from` / `special_until` / `special_day`; group keys are `all`, mon..sun or
   a special key. `handlers.ParseHours` turns them into rows, `controllers.NormalizeHours` validates (HH:MM, open
   + close both set, no hours on a closed row, not closed and open for the same day / dates, YYYY-MM-DD,
-  from <= until) and sorts. Saving deletes and re-inserts all the cafe's rows in the cafe transaction
-  (`replaceAllHours`). JS (add / remove, "Closed" disables the ranges) is delegated in `forms.js`.
+  from <= until) and sorts. Saving syncs the cafe's rows in the cafe transaction (`syncHours`): rows
+  identical to a submitted row are kept (same id and timestamps), the rest are updated in place, deleted or
+  inserted. The form posts no row ids, so a changed row reuses an arbitrary unmatched live row. JS (add / remove, "Closed" disables the ranges) is delegated in `forms.js`.
 - `hours` proposal `new_value` (scraper): `{"window_from", "window_until", "rows": [{day, open, close,
   valid_from, valid_until, closed}], "days": [raw scraped days]}` (`models.HoursProposal`); the queue's
   current value is `{"rows": [...]}`, the live rows in that shape. The queue shows a current-vs-proposed table
   per date of the window (changed days highlighted, special days marked). Approve (and "Edit & approve", the
   same editor prefilled with the proposed rows; the window is fixed) replaces the undated rows plus the dated
   rows overlapping `[window_from, window_until]` and keeps dated rows outside it (`models.ReplacedByWindow`,
-  `replaceWindowHours`), bumping `cafe.updated_at` in the same transaction; proposed dated rows must overlap
+  `replaceWindowHours`), locking the cafe row (`SELECT ... FOR UPDATE`, not an `updated_at` bump); proposed dated rows must overlap
   the window. A proposal that does not parse in this shape (the old `{open, close, days}`) shows its raw JSON
   and can only be rejected.
 - Deploy order: BE migration 013 → this admin (+ be and scraper on `cafe_hour`) → 014 (drops
@@ -263,3 +266,10 @@ close < open = overnight; 24h = `00:00–23:59`; dates are Jakarta (`models.Jaka
 - `cafe.weather` is NOT NULL — always pass a non-nil slice.
 - Saving a cafe only bumps `cafe_tag.updated_at` when visibility changes (the public API picks the
   most recently updated tag as the remark).
+- `updated_at` means "this row changed" (BCF-45). Writes use `IS DISTINCT FROM` guards (`UPDATE ... WHERE (cols)
+  IS DISTINCT FROM (new)`, `ON CONFLICT ... DO UPDATE ... WHERE`), so a no-op cafe form save writes nothing and
+  an edit bumps only its own table (`cafe`, `location`, `cafe_price`, `location_image`, `cafe_hour`). Never bump
+  `cafe.updated_at` for a change stored elsewhere: the public last-modified time is derived across tables by the
+  BE view `cafe_last_modified` (BCF-44). `CafeRepository.Update` locks the cafe row `FOR UPDATE` first, since its
+  guarded UPDATE may not. Soft delete of an already deleted cafe is a no-op. Deploy after BE migration 015: the
+  cafe list joins the view and fails without it.

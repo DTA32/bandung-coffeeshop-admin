@@ -22,11 +22,21 @@ func NewCafeRepository(db *pgxpool.Pool) *CafeRepository {
 }
 
 // cafeListOrder maps a sort key to a whitelisted ORDER BY clause; unknown keys
-// fall back to the default (least recently updated first).
+// fall back to the default (least recently updated first). The date is the
+// cafe_last_modified view (BE migration 015), the same last-modified time the
+// public site shows.
 var cafeListOrder = map[string]string{
-	models.CafeSortUpdatedAsc:  "GREATEST(l.updated_at, c.updated_at) ASC, l.name ASC, l.id ASC",
-	models.CafeSortUpdatedDesc: "GREATEST(l.updated_at, c.updated_at) DESC, l.name ASC, l.id ASC",
+	models.CafeSortUpdatedAsc:  "v.last_modified ASC, l.name ASC, l.id ASC",
+	models.CafeSortUpdatedDesc: "v.last_modified DESC, l.name ASC, l.id ASC",
 }
+
+// cafeListSelect is the column list and FROM clause scanCafeListItem reads.
+const cafeListSelect = `
+	SELECT l.id, c.id, l.name, l.status::text, c.is_featured, c.instagram,
+	       TO_CHAR(v.last_modified, 'YYYY-MM-DD')
+	FROM location l
+	JOIN cafe c ON c.location_id = l.id
+	JOIN cafe_last_modified v ON v.cafe_id = c.id`
 
 func scanCafeListItem(row pgx.CollectableRow) (models.CafeListItem, error) {
 	var it models.CafeListItem
@@ -43,11 +53,7 @@ func (r *CafeRepository) List(ctx context.Context, q, sort string, page int) (mo
 		order = cafeListOrder[models.CafeSortUpdatedAsc]
 	}
 	limit, offset := pageWindow(page)
-	rows, err := r.db.Query(ctx, `
-		SELECT l.id, c.id, l.name, l.status::text, c.is_featured, c.instagram,
-		       TO_CHAR(GREATEST(l.updated_at, c.updated_at), 'YYYY-MM-DD')
-		FROM location l
-		JOIN cafe c ON c.location_id = l.id
+	rows, err := r.db.Query(ctx, cafeListSelect+`
 		WHERE l.type = 'cafe'
 		  AND ($1::text = '' OR l.name ILIKE '%' || $1 || '%' OR l.id ILIKE '%' || $1 || '%')
 		ORDER BY `+order+`
@@ -61,11 +67,7 @@ func (r *CafeRepository) List(ctx context.Context, q, sort string, page int) (mo
 
 // Options returns every cafe (id, name, status) ordered by name, for <select>s.
 func (r *CafeRepository) Options(ctx context.Context) ([]models.CafeListItem, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT l.id, c.id, l.name, l.status::text, c.is_featured, c.instagram,
-		       TO_CHAR(GREATEST(l.updated_at, c.updated_at), 'YYYY-MM-DD')
-		FROM location l
-		JOIN cafe c ON c.location_id = l.id
+	rows, err := r.db.Query(ctx, cafeListSelect+`
 		WHERE l.type = 'cafe'
 		ORDER BY l.name ASC, l.id ASC`)
 	if err != nil {
@@ -186,7 +188,9 @@ func (r *CafeRepository) Create(ctx context.Context, p models.Cafe) error {
 	return tx.Commit(ctx)
 }
 
-// Update rewrites every table for an existing cafe in one transaction.
+// Update saves the cafe form in one transaction. Only rows whose values differ
+// are written, so updated_at moves only on the table that holds a change and a
+// no-op save writes nothing.
 func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -194,10 +198,13 @@ func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) e
 	}
 	defer tx.Rollback(ctx)
 
+	// Lock the cafe row: the UPDATE below may skip it (no change), and an
+	// hours proposal approval (ChangeRepository.Apply) locks the same row.
 	var cafeID int
 	if err := tx.QueryRow(ctx, `
 		SELECT c.id FROM cafe c JOIN location l ON l.id = c.location_id
 		WHERE l.id = $1 AND l.type = 'cafe'
+		FOR UPDATE OF c
 	`, id).Scan(&cafeID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -207,13 +214,16 @@ func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) e
 
 	lng, lat := coordArgs(p.Coordinates)
 	if _, err := tx.Exec(ctx, `
-		UPDATE location SET
+		UPDATE location l SET
 			name = $2, description = $3, description_indo = $4, gmaps_id = $5,
 			status = $6::location_status_enum,
-			coordinates = CASE WHEN $7::float8 IS NULL OR $8::float8 IS NULL THEN NULL
-			                   ELSE ST_SetSRID(ST_MakePoint($7, $8), 4326) END,
+			coordinates = n.coordinates,
 			updated_at = NOW()
-		WHERE id = $1 AND type = 'cafe'
+		FROM (SELECT CASE WHEN $7::float8 IS NULL OR $8::float8 IS NULL THEN NULL
+		                  ELSE ST_SetSRID(ST_MakePoint($7, $8), 4326) END AS coordinates) n
+		WHERE l.id = $1 AND l.type = 'cafe'
+		  AND (l.name, l.description, l.description_indo, l.gmaps_id, l.status, l.coordinates)
+		      IS DISTINCT FROM ($2, $3, $4, $5, $6::location_status_enum, n.coordinates)
 	`, id, p.Name, p.Description, p.DescriptionIndo, p.GmapsID, p.Status, lng, lat); err != nil {
 		return err
 	}
@@ -223,6 +233,8 @@ func (r *CafeRepository) Update(ctx context.Context, id string, p models.Cafe) e
 			instagram = $2, phone = $3, menu = $4,
 			is_featured = $5, weather = $6, description = $7, description_indo = $8, updated_at = NOW()
 		WHERE id = $1
+		  AND (instagram, phone, menu, is_featured, weather, description, description_indo)
+		      IS DISTINCT FROM ($2, $3, $4, $5, $6, $7, $8)
 	`, cafeID, p.Instagram, p.Phone, p.Menu, p.IsFeatured, p.Weather,
 		p.About, p.AboutIndo); err != nil {
 		return err
@@ -252,16 +264,22 @@ func (r *CafeRepository) TouchTag(ctx context.Context, locationID string, tagID 
 	return at, err
 }
 
-// SoftDelete marks the cafe's location as deleted.
+// SoftDelete marks the cafe's location as deleted. Deleting an already
+// deleted cafe is a no-op (updated_at stays); ErrNotFound only when there is
+// no such cafe.
 func (r *CafeRepository) SoftDelete(ctx context.Context, id string) error {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE location SET status = 'deleted', updated_at = NOW()
-		WHERE id = $1 AND type = 'cafe'
-	`, id)
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		WITH upd AS (
+			UPDATE location SET status = 'deleted', updated_at = NOW()
+			WHERE id = $1 AND type = 'cafe' AND status <> 'deleted'
+		)
+		SELECT EXISTS (SELECT 1 FROM location WHERE id = $1 AND type = 'cafe')
+	`, id).Scan(&exists)
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
+	if !exists {
 		return ErrNotFound
 	}
 	return nil
@@ -276,10 +294,11 @@ func coordArgs(c *models.Coordinates) (*float64, *float64) {
 }
 
 // writeCafeChildren upserts price/tags/images for a cafe, deleting tags and
-// images absent from the payload, and replaces its cafe_hour rows. Reviews and
-// ratings are never touched here.
+// images absent from the payload, and syncs its cafe_hour rows. Upserts only
+// write (and bump updated_at) when a value differs. Reviews and ratings are
+// never touched here.
 func writeCafeChildren(ctx context.Context, tx pgx.Tx, locationID string, cafeID int, p models.Cafe) error {
-	if err := replaceAllHours(ctx, tx, cafeID, p.Hours); err != nil {
+	if err := syncHours(ctx, tx, cafeID, p.Hours); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
@@ -297,6 +316,15 @@ func writeCafeChildren(ctx context.Context, tx pgx.Tx, locationID string, cafeID
 			food_price_min = EXCLUDED.food_price_min,
 			food_price_max = EXCLUDED.food_price_max,
 			updated_at = NOW()
+		WHERE (cafe_price.price_range_min, cafe_price.price_range_max,
+		       cafe_price.coffee_price_min, cafe_price.coffee_price_max,
+		       cafe_price.snack_price_min, cafe_price.snack_price_max,
+		       cafe_price.food_price_min, cafe_price.food_price_max)
+		      IS DISTINCT FROM
+		      (EXCLUDED.price_range_min, EXCLUDED.price_range_max,
+		       EXCLUDED.coffee_price_min, EXCLUDED.coffee_price_max,
+		       EXCLUDED.snack_price_min, EXCLUDED.snack_price_max,
+		       EXCLUDED.food_price_min, EXCLUDED.food_price_max)
 	`, cafeID,
 		p.Price.PriceRangeMin, p.Price.PriceRangeMax,
 		p.Price.CoffeePriceMin, p.Price.CoffeePriceMax,
